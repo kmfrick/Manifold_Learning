@@ -1,6 +1,6 @@
 ---
 title: "Density estimation. Clustering. (Assignment)"
-author: "Pedro Delicado"
+author: "Kevin Michael Frick, Patrick Lutz, Sonia Petrini"
 output:
   pdf_document: default
   html_document: default
@@ -8,7 +8,7 @@ output:
 
 ```{r setup, include=FALSE}
 library(cluster)
-knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE, comment = FALSE, error = FALSE, eval=FALSE)
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE, comment = FALSE, error = FALSE, eval=TRUE)
 #Put eval=FLSE for having just the question steatments
 #Put eval=TRUE for obtaining the output
 ```
@@ -111,8 +111,9 @@ for (j in 1:k){
 4. Repeat now points 3 and 4, but choose the number of clusters $k$ according to one (or several) of the automatic criteria we have seen in class.
 *Optional: If you want, you can choose the optimal bandwidth for each cluster separately (this will improve the final density estimations).* 
 
+We will now plot the Calinski-Harabasz index for different values for the number of clusters $K$.
 
-```{r clusternum, warning=FALSE, message=FALSE}
+```{r clusternum, warning=FALSE, message=FALSE, echo=TRUE}
 library(fpc)
 n.cl <- 2:10
 l.n.cl<-length(n.cl)
@@ -128,51 +129,44 @@ d.Eucl <- dist(Boston[-ncol(Boston)])
 logLFull <- numeric(l.n.cl)
 logLOut <- 0
 
+logL <- numeric(l.n.cl)
 for (i in (1:l.n.cl)){
   k_bar<-n.cl[i]
   hcl.Eucl <- hclust(d.Eucl, method="ward.D")
   cut.hcl.Eucl <- cutree(hcl.Eucl,k_bar)
   cl.stats <- cluster.stats(d.Eucl,cut.hcl.Eucl)
-  avg.sil[i]   <- cl.stats$avg.silwidth
-  w[i]    <- cl.stats$average.within
-  wb.rat[i]    <- cl.stats$wb.ratio
-  sep.ind[i]   <- cl.stats$sindex
   CalHar[i]   <- cl.stats$ch
-  plot(X, col=cut.hcl.Eucl,as=1)
-  for (j in 1:k_bar){
-    logL <- numeric(k_bar)
-    cl.j <- (cut.hcl.Eucl==j)
-    f.hat.i.matrix <- sm.density(X[cl.j,],h=a.opt*c(1,1), 
-               display="slice",props=c(75),
-               col=j, cex=4, add=TRUE)$estimate
-#    new.point <- matrix(X[i,],ncol=2)
-#    f.hat.i <- sm.density(X[-i,],h=a*c(1,1),display="none",eval.grid=FALSE,
-#                    eval.points=new.point)$estimate
-    logL[j] <- logL[j] + sum(log(f.hat.i.matrix))
-    if(j == k_bar){
-      logLOut <- logL[j]
-    }
-  }
-  logLFull[i] = logLOut
-}
-df <- data.frame(n.cl, logLFull, CalHar, w, wb.rat, sep.ind, avg.sil)
-require(ggplot2)
-ggplot(df, aes(n.cl)) +                   
-  geom_line(aes(y=logLFull), colour="black")
+  #lot(X, col=cut.hcl.Eucl,as=1)
   
-ggplot(df, aes(n.cl)) +                   
-  geom_line(aes(y=CalHar), colour="green")
-ggplot(df, aes(n.cl)) +                   
-  geom_line(aes(y=w), colour="blue")
-ggplot(df, aes(n.cl)) +                   
-  geom_line(aes(y=wb.rat), colour="red")
-ggplot(df, aes(n.cl)) +                   
-  geom_line(aes(y=sep.ind), colour="orange")
-ggplot(df, aes(n.cl)) +                   
-  geom_line(aes(y=avg.sil), colour="yellow")
+}
+
+df <- data.frame(cbind(CalHar, n.cl))
+barplot(CalHar ~ n.cl, data = df, col=1:10, ylab="Calinski-Harabasz index", xlab="Number of clusters")
 
 ```
 
+We can see that, according to this index, the most promising number of clusters is 4.
+
+We will, therefore, cluster the data in 4 parts before running density estimation. 
+
+```{r densities_maxcalhar,fig.asp=1,warning=FALSE, message=FALSE, echo=TRUE}
+k<-4
+d.X <- dist(X)
+hcl.0 <- hclust(d.X,method = "ward.D")
+plot(hcl.0)
+hcl.0.k <- cutree(hcl.0,k)
+library(sm)
+plot(X,col=hcl.0.k,as=1)
+a.opt <- 0.3 # from before
+for (j in 1:k){
+  cl.j <- (hcl.0.k==j)
+  sm.density(X[cl.j,],h=a.opt*c(1,1), 
+             display="slice",props=c(75),
+             col=j, cex=4, add=TRUE)
+}
+```
+
+Beyond the quantitative measure given by the CalHar index, we can qualitatively observe that the spread-out points on the right are captured by a new cluster instead of being considered mere outliers for the third one. 
 
 
 
