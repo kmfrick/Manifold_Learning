@@ -125,7 +125,8 @@ CalHar <- numeric(l.n.cl)
 
 d.Eucl <- dist(Boston[-ncol(Boston)])
 
-logL <- c()
+logLFull <- numeric(l.n.cl)
+logLOut <- 0
 
 for (i in (1:l.n.cl)){
   k_bar<-n.cl[i]
@@ -137,15 +138,38 @@ for (i in (1:l.n.cl)){
   wb.rat[i]    <- cl.stats$wb.ratio
   sep.ind[i]   <- cl.stats$sindex
   CalHar[i]   <- cl.stats$ch
+  plot(X, col=cut.hcl.Eucl,as=1)
   for (j in 1:k_bar){
-    cl.j <- (hcl.0.k==j)
-    f.hat.i <- sm.density(X[cl.j,],h=a.opt*c(1,1), 
+    logL <- numeric(k_bar)
+    cl.j <- (cut.hcl.Eucl==j)
+    f.hat.i.matrix <- sm.density(X[cl.j,],h=a.opt*c(1,1), 
                display="slice",props=c(75),
-               col=j, cex=4)$estimate
-    append(logL, log(f.hat.i))
+               col=j, cex=4, add=TRUE)$estimate
+#    new.point <- matrix(X[i,],ncol=2)
+#    f.hat.i <- sm.density(X[-i,],h=a*c(1,1),display="none",eval.grid=FALSE,
+#                    eval.points=new.point)$estimate
+    logL[j] <- logL[j] + sum(log(f.hat.i.matrix))
+    if(j == k_bar){
+      logLOut <- logL[j]
+    }
   }
-  
+  logLFull[i] = logLOut
 }
+df <- data.frame(n.cl, logLFull, CalHar, w, wb.rat, sep.ind, avg.sil)
+require(ggplot2)
+ggplot(df, aes(n.cl)) +                   
+  geom_line(aes(y=logLFull), colour="black")
+  
+ggplot(df, aes(n.cl)) +                   
+  geom_line(aes(y=CalHar), colour="green")
+ggplot(df, aes(n.cl)) +                   
+  geom_line(aes(y=w), colour="blue")
+ggplot(df, aes(n.cl)) +                   
+  geom_line(aes(y=wb.rat), colour="red")
+ggplot(df, aes(n.cl)) +                   
+  geom_line(aes(y=sep.ind), colour="orange")
+ggplot(df, aes(n.cl)) +                   
+  geom_line(aes(y=avg.sil), colour="yellow")
 
 ```
 
