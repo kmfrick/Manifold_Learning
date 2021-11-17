@@ -1,0 +1,111 @@
+---
+title: "Density estimation. Clustering. (Assignment)"
+author: "Pedro Delicado"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE, comment = FALSE, error = FALSE, eval=FALSE)
+#Put eval=FLSE for having just the question steatments
+#Put eval=TRUE for obtaining the output
+```
+
+## Reading the data: Boston Housing
+We'll use the `MASS::Boston` dataset, that contains median house values from Boston neighbourhoods.
+In particular we are interested in the joint distributions of centered and scaled variables `lstat` and `rm`:
+
+```{r,fig.height=4.5,fig.width=4.5,fig.align='center',echo=TRUE,eval=TRUE}
+data("Boston", package = "MASS")
+X <- scale(Boston[,c(13,6)])
+plot(X,as=1)
+```
+
+## Questions
+
+1. We want to estimate the joint bivariate density using a kernel estimator with the same bandwith in both dimensions: $h=(a,a)$. 
+For instance, the following code performs this estimation for $a=0.5$:
+
+```{r,fig.height=4.5,fig.width=4.5,fig.align='center',echo=TRUE,eval=TRUE}
+library(sm)
+plot(X,as=1,col=8)
+sm.density(X,h=.5*c(1,1),display="slice",props=c(25,50,75,95),col=2,add=TRUE)
+```
+
+Use the *maximum log-likelihood cross-validation method* for choosing the value of $a$, whem $a$ takes values in the vector `seq(0.1,1,by=0.1)`. Then repeat the previous density estimation using the chosen value of $a$.
+
+*Indication:* 
+Maximize in $a$ the **logarithm** of the likelihood cross-validation (instead of maximizing just the likelihood cross-validation). 
+The following code evaluates the logarithm of the density estimator at point $(0,0)$:
+```{r,echo=TRUE,eval=FALSE}
+new.point <- matrix(c(0,0),ncol=2)
+f.hat <- sm.density(X,h=.5*c(1,1),display="none",eval.grid=FALSE,
+                    eval.points=new.point)
+log(f.hat$estimate)
+```
+
+
+```{r}
+va <- seq(0.1,1,by=0.1)
+na <- length(va)
+logLCVa <- numeric(na)
+
+n <- dim(X)[1]
+
+for (j in 1:na){
+  a <- va[j]
+  for (i in 1:n){
+    new.point <- matrix(X[i,],ncol=2)
+    f.hat.i <- sm.density(X[-i,],h=a*c(1,1),display="none",eval.grid=FALSE,
+                    eval.points=new.point)$estimate
+    logLCVa[j] <- logLCVa[j] + log(f.hat.i)
+  }
+}
+
+plot(va,logLCVa,type="b")
+```
+
+```{r,fig.asp=1}
+a.opt <- va[which.max(logLCVa)]
+
+plot(X,as=1,col=8,main=paste("Optimal a: ",a.opt))
+sm.density(X,h=a.opt*c(1,1),display="slice",props=c(25,50,75,95),col=2,add=TRUE)
+```
+
+
+2. Do a hierarchical clustering of these data using the `ward.D` method, plot the resulting dendogram and cut it into $k=3$ clusters. 
+Plot the scatterplot of the data, using a different color for points in different clusters.
+
+```{r clustering}
+k<-3
+d.X <- dist(X)
+hcl.0 <- hclust(d.X,method = "ward.D")
+plot(hcl.0)
+hcl.0.k <- cutree(hcl.0,k)
+```
+
+```{r,fig.asp=1}
+plot(X,col=hcl.0.k,as=1)
+```
+
+3. For each one of the $k$ clusters obtained above, do the following tasks *(A unique plot should be done, at which the $k$ densities are represented simultaneously)*:
+- Consider the bivariate data set of the points in this cluster.
+- Estimate non-parametrically the joint density of `lstat` and `rm`, conditional to this cluster *(Use the optimal bandwith found in the first point)*.
+- Represent the estimated bivariate density using the level curve that covers the 75% of the points in this cluster.
+
+ 
+
+```{r densities,fig.asp=1,warning=FALSE, message=FALSE}
+library(sm)
+plot(X,col=hcl.0.k,as=1)
+for (j in 1:k){
+  cl.j <- (hcl.0.k==j)
+  sm.density(X[cl.j,],h=a.opt*c(1,1), 
+             display="slice",props=c(75),
+             col=j, cex=4, add=TRUE)
+}
+```
+
+4. Repeat now points 3 and 4, but choose the number of clusters $k$ according to one (or several) of the automatic criteria we have seen in class.
+*Optional: If you want, you can choose the optimal bandwidth for each cluster separately (this will improve the final density estimations).* 
