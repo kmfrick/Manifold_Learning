@@ -7,6 +7,7 @@ output:
 ---
 
 ```{r setup, include=FALSE}
+library(cluster)
 knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE, comment = FALSE, error = FALSE, eval=FALSE)
 #Put eval=FLSE for having just the question steatments
 #Put eval=TRUE for obtaining the output
@@ -109,3 +110,45 @@ for (j in 1:k){
 
 4. Repeat now points 3 and 4, but choose the number of clusters $k$ according to one (or several) of the automatic criteria we have seen in class.
 *Optional: If you want, you can choose the optimal bandwidth for each cluster separately (this will improve the final density estimations).* 
+
+
+```{r clusternum, warning=FALSE, message=FALSE}
+library(fpc)
+n.cl <- 2:10
+l.n.cl<-length(n.cl)
+
+avg.sil <- numeric(l.n.cl)
+w <- numeric(l.n.cl)
+wb.rat <- numeric(l.n.cl)
+sep.ind <- numeric(l.n.cl)
+CalHar <- numeric(l.n.cl)
+
+d.Eucl <- dist(Boston[-ncol(Boston)])
+
+logL <- c()
+
+for (i in (1:l.n.cl)){
+  k_bar<-n.cl[i]
+  hcl.Eucl <- hclust(d.Eucl, method="ward.D")
+  cut.hcl.Eucl <- cutree(hcl.Eucl,k_bar)
+  cl.stats <- cluster.stats(d.Eucl,cut.hcl.Eucl)
+  avg.sil[i]   <- cl.stats$avg.silwidth
+  w[i]    <- cl.stats$average.within
+  wb.rat[i]    <- cl.stats$wb.ratio
+  sep.ind[i]   <- cl.stats$sindex
+  CalHar[i]   <- cl.stats$ch
+  for (j in 1:k_bar){
+    cl.j <- (hcl.0.k==j)
+    f.hat.i <- sm.density(X[cl.j,],h=a.opt*c(1,1), 
+               display="slice",props=c(75),
+               col=j, cex=4)$estimate
+    append(logL, log(f.hat.i))
+  }
+  
+}
+
+```
+
+
+
+
