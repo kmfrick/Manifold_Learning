@@ -16,6 +16,7 @@ Reading the data:
 library(dplyr)
 zip.train <- read.table("zip.train")
 zeros <- filter(zip.train, V1==0)
+zeros <- zeros
 ```
 
 a. Do a hierarchical clustering of these data using the ward.D method, plot the resulting dendogram and cut it into k=4 clusters
@@ -94,14 +95,18 @@ xmin <- min(zip_pc$scores[,1])
 xmax <- max(zip_pc$scores[,1])
 ymin <- min(zip_pc$scores[,2])
 ymax <- max(zip_pc$scores[,2])
+
+options(error = function() traceback(10))
 pc <- principal_curve(as.matrix(zeros), df=15)
-plot(pc, col=5, xlim=c(xmin, xmax), ylim=c(ymin,ymax), asp=1)
+points_to_pc <- predict(zip_pc, pc$s)
 for (i in 1:5) {
   pts_in_cluster <- which(dendo.4==i)
   pc_scores <- zip_pc$scores[pts_in_cluster,1:2]
-  points(pc_scores, col=i)
-  #sm.density(pc_scores, col=i, display="slice", add=TRUE)
+  if (i == 1) plot(pc_scores, col=i, xlim=c(xmin, xmax), ylim=c(ymin,ymax))
+  else points(pc_scores, col=i)
 }
+
+lines(points_to_pc[pc$ord,1:2],col=6,lwd=2)
 ```
 
 f. For each one of the k clusters obtained above, do the following tasks: (A unique scatter plot of the scores in PC1 and PC2 should be done, over which the k densities are represented simultaneously) 
@@ -109,6 +114,25 @@ f. For each one of the k clusters obtained above, do the following tasks: (A uni
  - Estimate non-parametrically the density function of lambda, conditional to this cluster. Use the default bandwith value. 
  - Plot the estimated density function. 
 ```{r}
-plot(pc$lambda, col=6)
-sm.density(pc$lambda, col=2, display="slice", add=TRUE)
+options(error = function() traceback(10))
+xmin <- min(zip_pc$scores[,1])
+xmax <- max(zip_pc$scores[,1])
+ymin <- min(zip_pc$scores[,2])
+ymax <- max(zip_pc$scores[,2])
+
+options(error = function() traceback(10))
+
+for (i in 1:5) {
+  pts_in_cluster <- which(dendo.4==i)
+  pc_scores <- zip_pc$scores[pts_in_cluster,1:2]
+  if (i == 1) {
+  sm.density(pc$lambda[pts_in_cluster], col=i, sm=75, xlab="Lambda")
+} else {
+    sm.density(pc$lambda[pts_in_cluster], col=i, add=TRUE, sm=75)
+
+}
+
+}
+
+
 ```
