@@ -171,7 +171,9 @@ points3D(rx,ry,rz,col=4,pch=19,cex=.6,add=TRUE)
 a. Choose the value of the degrees of freedom df by leave-one-out cross-validation. Restrict the search of df to seq(2,8,by=1). 
 
 ```{r}
-# split into train and test 
+sample <- sample.int(n = nrow(XYZ), size = floor(.75*nrow(XYZ)), replace = F)
+train <- XYZ[sample, ]
+test  <- XYZ[-sample, ]
 
 # LOOCV to find best df
 require(princurve)
@@ -191,10 +193,11 @@ for (df in dfs){
   distances <- append(distances,mean(dist))
 }
 
+
 # plot of LOOCV results
 df_opt_dist <- min(distances)
 df_opt <- dfs[which(distances==df_opt_dist)]
-plot(x=dfs,y=distances,ylab="Total Squared Porojecting Distance",xlab="Degrees of Freedom")
+plot(x=dfs,y=distances,ylab="Total Squared Porojecting Distance",xlab="Degrees of Freedom",main="")
 abline(h=df_opt_dist,lty="dashed",col="red")
 ```
 
@@ -221,7 +224,10 @@ points(XYZ,col=4)
 lines(fit)
 points(fit)
 whiskers(XYZ, fit$s)
+
 ```
+
+
 
 
 c. Compute the leave-one-out cross-validation for df=50 and compare it with the result corresponding to the optimal df value you found before.
@@ -232,7 +238,7 @@ By performing LOOCV with df = 50, we find a total squared distance equal to 0.03
 # LOOCV for df = 50
 df <- 50
 df50_distances <- c()
-for(i in 1:points){
+for(i in 1:n_points){
       validation <- t(as.matrix(XYZ[i,]))
       training <- XYZ[-i,]    
       fit <- principal_curve(training,df=df)
@@ -270,11 +276,7 @@ From the visualization of the Principal Curve built with df = 50, we can confirm
 - The overfitting with df=50 is clear. Nevertheless leave-one-out cross-validation has not been able to
 detect this fact. Why do you think that df=50 is given a so good value of leave-one-out cross-validation?
 
-LOOCV was applied on the whole dataset, and it will thus simply return the parameter value resulting in the lowest error, which will clearly correspond to a very complex model, ideally one that crosses all the data points. In order to also take into account the models' flatness and generalization ability, one should first split the data into a training and test samples. After fitting the Principal Curve on the training data, the error is evaluated with respect to the projection distance of the new unseen datapoints. At this point, the most likely outcome for the model with df = 50 will be a very low training error, but a very high test error. On the other hand, we would expect the model with the optimal df value to have a comparable performance in both samples.
-
-
-
-
+LOOCV is an unbiased measure that only takes into account the model's ability to give accurate predictions, but it does not stricly measure overfitting. In order to assess the level of overfitting, a measure considering both the model's error and complexity should be used, such as the AIC in regression. Train/Test splits or k-fold cross-validation would not be adequate either, since they are simply biased estimates of LOOCV. 
 
 
 
