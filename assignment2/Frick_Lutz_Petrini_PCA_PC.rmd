@@ -1,7 +1,7 @@
 ---
 title: 'Assignment: PCA and principal curves'
 author: "Kevin Frick, Patrick Lutz, and Sonia Petrini"
-date: "11/17/2021"
+date: "28 Nov 2021"
 output:
   pdf_document: default
   html_document: default
@@ -112,6 +112,7 @@ for (i in 1:num_clusters) {
   pc_scores <- zip_pc$scores[pts_in_cluster,1:2]
   if (i == 1) plot(pc_scores, col=i, xlim=c(xmin, xmax), ylim=c(ymin,ymax))
   else points(pc_scores, col=i)
+  sm.density(pc_scores, col=i, display="slice", add=TRUE, props=c(75))
 }
 
 lines(points_to_pc[pc$ord,1:2],col=6,lwd=2)
@@ -214,7 +215,8 @@ par(mfrow=c(1,2))
 
 # Principal Curve with lowest df
 fit <- principal_curve(XYZ,df=dfs[1])
-plot(fit,xlim=range(XYZ[,1]),ylim=range(XYZ[,2]),asp=1,main="Principal Curve with df=2",cex.main=1)
+plot(fit,xlim=range(XYZ[,1]),ylim=range(XYZ[,2]),asp=1,
+     main="Principal Curve with df=2",cex.main=1)
 points(XYZ,col=4)
 lines(fit)
 points(fit)
@@ -222,7 +224,8 @@ whiskers(XYZ, fit$s)
 
 # Principal Curve with best df
 fit <- principal_curve(XYZ,df=df_opt)
-plot(fit,xlim=range(XYZ[,1]),ylim=range(XYZ[,2]),asp=1,main=paste("Principal Curve with optimal df =",df_opt),cex.main=1)
+plot(fit,xlim=range(XYZ[,1]),ylim=range(XYZ[,2]),asp=1,
+     main=paste("Principal Curve with optimal df =",df_opt),cex.main=1)
 points(XYZ,col=4)
 lines(fit)
 points(fit)
@@ -251,7 +254,7 @@ for(i in 1:n_points){
 df50_dist <- mean(df50_distances)
 print(paste("LOOCV score for df = 50:", df50_dist))
 print(paste("LOOCV score for df =",df_opt,":",df_opt_dist))
-change <- round((df_opt_dist-df50_dist)/df_opt_dist,3)
+change <- round(1- df50_dist/df_opt_dist,3)
 print(paste("Change in performance with new df = 50:",change*100, "%"))
 ```
 
@@ -281,9 +284,7 @@ detect this fact. Why do you think that df=50 is given a so good value of leave-
 
 LOOCV is an unbiased measure that only takes into account the model's ability to give accurate predictions, but it does not stricly measure overfitting. In order to assess the level of overfitting, a measure considering both the model's error and complexity should be used, such as the AIC in regression. Train/Test splits or k-fold cross-validation would not be adequate either, since they are simply biased estimates of LOOCV. 
 
-One method for model selection that could be used is the Local Continuity Meta-Criterion, which measures the degree of overlap between k-nearest-neighbor sets computed using the distance matrix of the points projected on the curve and the points in their original space.
-
-However, this criteron does not take into account model complexity either, so we expect it to 
+One method for model selection that could be used is the Local Continuity Meta-Criterion, which measures the degree of overlap between k-nearest-neighbor sets computed using the distance matrix of the points projected on the curve and the points in their original space. However, this criteron does not take into account model complexity either. 
 
 ```{r}
 LCMC <- function(D1,D2,Kp){
@@ -309,8 +310,8 @@ for (df in possible_df) {
   fit <- principal_curve(XYZ,df=df)
   proj <- project_to_curve(XYZ, fit$s)
   proj <- as.matrix(proj$s)
-  D1 <- dist(proj)# distance matrix among points projected onto the principal curve
-  D2 <- dist(XYZ)# distance matrix among points
+  D1 <- dist(proj) # distance matrix among points projected onto the PC
+  D2 <- dist(XYZ) # distance matrix among points
   lcmc_k <- c()
   for (k in 2:10) {
     lcmc_k <- append(lcmc_k, LCMC(D1, D2, k)$M.Kp.adj)
@@ -320,7 +321,8 @@ for (df in possible_df) {
 
 library(plotrix)
 par(bty="n") # delete the box for a better look after the axis cut
-gap.plot( possible_df, lcmc, gap = c(9, 48), gap.axis = "x", xlab = 'DoF', ylab = 'LCMC', xtics=possible_df)
+gap.plot(possible_df, lcmc, gap = c(9, 48), gap.axis = "x", xlab = 'DoF', 
+          ylab = 'LCMC', xtics=possible_df)
 axis(2)
 abline(v=seq(8.99,9.2,.005), col="white")  # hiding vertical lines
 axis.break(1,9,style="slash") 
@@ -330,7 +332,7 @@ cat("M.Kp.adj(", possible_df[length(lcmc)],
     ") = ", lcmc[length(lcmc)]/lcmc[length(lcmc)-3])
 ```
 
-Even using LCMC, we find that even this criterion is unable to give a worse score to a model with 50 DoF and one with 6 DoF, although the difference is lower than what we get with LOOCV (14%  improvement in favor of 50 DoF, vs 61% with LOOCV). 
+Even using LCMC, we find that even this criterion is unable to give a worse score to a model with 50 DoF and one with 6 DoF, although the difference is lower than what we get with LOOCV (13%  improvement in favor of 50 DoF, vs 61% with LOOCV). 
 
 We believe this result is to be expected since even LCMC doesn't take into account model complexity, like AIC does.
 
