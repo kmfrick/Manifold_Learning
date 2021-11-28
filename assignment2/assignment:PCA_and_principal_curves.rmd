@@ -71,7 +71,7 @@ for (i in 1:5) {
 }
 ```
 
-d. For each one of the k clusters obtained above, do the following tasks: (A unique plot should be done, at which the k densities are represented simultaneously)
+d. For each one of the k clusters obtained above, do the following tasks: (A unique scatter plot of the scores in PC1 and PC2 should be done, over which the k densities are represented imultaneously)
  - Consider the bivariate data set of the scores in PC1 and PC2 of the points in this cluster. 
  - Estimate non-parametrically the joint density of (PC1,PC2), conditional to this cluster. Use the default bandwith values. 
  - Represent the estimated bivariate density using the level curve that covers the 75% of the points in this cluster.
@@ -117,7 +117,7 @@ for (i in 1:num_clusters) {
 lines(points_to_pc[pc$ord,1:2],col=6,lwd=2)
 ```
 
-f. For each one of the k clusters obtained above, do the following tasks: (A unique scatter plot of the scores in PC1 and PC2 should be done, over which the k densities are represented simultaneously) 
+f. For each one of the k clusters obtained above, do the following tasks: (A unique plot should be done, at which the k densities are represented simultaneously)
  - Consider the univariate data set of the lambda scores over the principal curve of the points in this cluster. 
  - Estimate non-parametrically the density function of lambda, conditional to this cluster. Use the default bandwith value. 
  - Plot the estimated density function. 
@@ -134,15 +134,12 @@ for (i in 1:num_clusters) {
   pts_in_cluster <- which(dendo.4==i)
   pc_scores <- zip_pc$scores[pts_in_cluster,1:2]
   if (i == 1) {
-  sm.density(pc$lambda[pts_in_cluster], col=i, sm=75, xlab="Lambda")
-} else {
+    sm.density(pc$lambda[pts_in_cluster], col=i, sm=75, xlab="Lambda")
+  } else {
     sm.density(pc$lambda[pts_in_cluster], col=i, add=TRUE, sm=75)
 
+  }
 }
-
-}
-
-
 ```
 
 
@@ -284,8 +281,58 @@ detect this fact. Why do you think that df=50 is given a so good value of leave-
 
 LOOCV is an unbiased measure that only takes into account the model's ability to give accurate predictions, but it does not stricly measure overfitting. In order to assess the level of overfitting, a measure considering both the model's error and complexity should be used, such as the AIC in regression. Train/Test splits or k-fold cross-validation would not be adequate either, since they are simply biased estimates of LOOCV. 
 
+One method for model selection that could be used is the Local Continuity Meta-Criterion, which measures the degree of overlap between k-nearest-neighbor sets computed using the distance matrix of the points projected on the curve and the points in their original space.
 
+However, this criteron does not take into account model complexity either, so we expect it to 
 
+```{r}
+LCMC <- function(D1,D2,Kp){
+  D1 <- as.matrix(D1)
+  D2 <- as.matrix(D2)
+  n <- dim(D1)[1]
+  N.Kp.i <- numeric(n)
+  for (i in 1:n){
+    N1.i <- sort.int(D1[i,],index.return = TRUE)$ix[1:Kp]
+    N2.i <- sort.int(D2[i,],index.return = TRUE)$ix[1:Kp]
+    N.Kp.i[i] <- length(intersect(N1.i, N2.i))
+  }
+  N.Kp<-mean(N.Kp.i)
+  M.Kp.adj <- N.Kp/Kp - Kp/(n-1)
+  
+  return(list(N.Kp.i=N.Kp.i, M.Kp.adj=M.Kp.adj))
+}
+
+possible_df <- c(2:8, 50)
+
+lcmc <- c()
+for (df in possible_df) {
+  fit <- principal_curve(XYZ,df=df)
+  proj <- project_to_curve(XYZ, fit$s)
+  proj <- as.matrix(proj$s)
+  D1 <- dist(proj)# distance matrix among points projected onto the principal curve
+  D2 <- dist(XYZ)# distance matrix among points
+  lcmc_k <- c()
+  for (k in 2:10) {
+    lcmc_k <- append(lcmc_k, LCMC(D1, D2, k)$M.Kp.adj)
+  }
+  lcmc <- append(lcmc, mean(lcmc_k))
+}
+
+library(plotrix)
+par(bty="n") # delete the box for a better look after the axis cut
+gap.plot( possible_df, lcmc, gap = c(9, 48), gap.axis = "x", xlab = 'DoF', ylab = 'LCMC', xtics=possible_df)
+axis(2)
+abline(v=seq(8.99,9.2,.005), col="white")  # hiding vertical lines
+axis.break(1,9,style="slash") 
+
+cat("M.Kp.adj(", possible_df[length(lcmc)], 
+    ") / M.Kp.adj(", possible_df[length(lcmc)-3], 
+    ") = ", lcmc[length(lcmc)]/lcmc[length(lcmc)-3])
+```
+
+Even using LCMC, we find that even this criterion is unable to give a worse score to a model with 50 DoF and one with 6 DoF, although the difference is lower than what we get with LOOCV (14%  improvement in favor of 50 DoF, vs 61% with LOOCV). 
+
+We believe this result is to be expected since even LCMC doesn't take into account model complexity, like AIC does.
 
 
 
