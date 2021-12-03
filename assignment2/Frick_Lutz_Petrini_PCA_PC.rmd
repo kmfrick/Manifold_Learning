@@ -95,6 +95,7 @@ draw_density_plot <- function() {
   sm.density(pc_scores, col=i, display="slice", add=TRUE, props=c(75))
   }
 }
+draw_density_plot()
 
 ```
 
@@ -103,7 +104,7 @@ e. Over the previous plot, represent the principal curve obtained from the 256-d
 library(princurve)
 options(error = function() traceback(10))
 
-for (df in seq(3, 15, 3)) {
+for (df in seq(3, 9, 3)) {
   pc <- principal_curve(as.matrix(zeros), df=df)
   points_to_pc <- predict(zip_pc, pc$s)
   draw_density_plot()
@@ -113,7 +114,7 @@ for (df in seq(3, 15, 3)) {
 
 ```
 
-We plot the principal curve for different values of the `df` parameter. We find that `df=6` allows the curve to smoothly pass through each cluster without being swayed by dense clusters (which starts to happen with `df >= 9`) or being excessively noisy.
+We plot the principal curve for different values of the `df` parameter. We find that `df=6` allows the curve to smoothly pass through each cluster without being swayed by dense clusters (which starts to happen with `df = 9`) or being excessively noisy.
 
 f. For each one of the k clusters obtained above, do the following tasks: (A unique plot should be done, at which the k densities are represented simultaneously)
  - Consider the univariate data set of the lambda scores over the principal curve of the points in this cluster.
