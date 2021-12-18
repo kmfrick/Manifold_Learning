@@ -155,4 +155,76 @@ We also see that very negative values of $x_2$ correspond to a thicker stroke wi
 # Selecting the tuning parameters for ZERO digits
 
 a. Use the local continuity meta criteria to select the tuning parameter k in ISOMAP for ZERO digits. Then describe graphically the low dimensional configuration corresponding to the optimal parameter.
+
+
+```{r}
+LCMC <- function(D1,D2,Kp){
+  D1 <- as.matrix(D1)
+  D2 <- as.matrix(D2)
+  n <- dim(D1)[1]
+  N.Kp.i <- numeric(n)
+  for (i in 1:n){
+    N1.i <- sort.int(D1[i,],index.return = TRUE)$ix[1:Kp]
+    N2.i <- sort.int(D2[i,],index.return = TRUE)$ix[1:Kp]
+    N.Kp.i[i] <- length(intersect(N1.i, N2.i))
+  }
+  N.Kp<-mean(N.Kp.i)
+  M.Kp.adj <- N.Kp/Kp - Kp/(n-1)
+  
+  return(list(N.Kp.i=N.Kp.i, M.Kp.adj=M.Kp.adj))
+}
+
+q <- 2
+
+Kp <- 10
+
+v.k <- 3:10
+
+LC <- numeric(length(v.k))
+ISOMAP.eps <- vector("list",length(v.k))
+
+for (i in 1:length(v.k)){
+  print(v.k[i])
+  ISOMAP.eps[[i]] <- isomap(distXY, ndim=q, 
+                            k= v.k[i])
+  D2.eps <- dist(ISOMAP.eps[[i]]$points[,1:q])
+  LC[i] <- LCMC(distXY,D2.eps,Kp)$M.Kp.adj
+  #print(c(i,j,LC[i,j]))
+}
+
+
+i.max <- which.max(LC)
+k.max <- v.k[i.max]
+ISOMAP.max <- ISOMAP.eps[[i.max]]
+
+plot(v.k, LC, type="b", main=paste0("The k maximizing the LCMC is ",k.max))
+
+```
 b. (OPTIONAL) Use the local continuity meta criteria to select the tuning parameters k and $\tau$ in Local MDS for ZERO digits. Then describe graphically the low dimensional configuration corresponding to the optimal parameter.
+
+```{r}
+q <- 2
+Kp <- 10
+
+K <- c(5,10,15)
+tau <- c(.1,.5,1)
+
+LC <- matrix(0,nrow=length(K),ncol=length(tau))
+lmds.k.tau <- array(vector("list",1),dim=dim(LC))
+
+for (i in 1:length(K)){
+  for (j in 1:length(tau)){
+    lmds.k.tau[[i,j]] <- lmds(as.matrix(distXY), k=K[i], ndim=q, tau=tau[j], itmax=20)
+    D2.k.tau <- dist(lmds.k.tau[[i,j]]$conf)
+    LC[i,j] <- LCMC(distXY,D2.k.tau,Kp)$M.Kp.adj
+    #print(c(i,j,LC[i,j]))
+  }
+}
+
+ij.max <- arrayInd(which.max(LC),.dim=dim(LC))
+k.max <- K[ij.max[1]] 
+tau.max <- tau[ij.max[2]] 
+LocalMDS.max <- lmds.k.tau[[ij.max[1],ij.max[2]]]
+
+print(paste0("The values maximizing the LCMC are k = ",k.max,"; tau = ",tau.max))
+```
