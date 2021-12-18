@@ -39,7 +39,7 @@ q<-2 # 2-dim config
 
 conf0 <- cmdscale(distXY, k=q)$points
 
-lmds.zeros.res <- lmds(as.matrix(distXY), init=conf0, ndim=q, k=k, tau=tau, itmax = 10)
+lmds.zeros.res <- lmds(as.matrix(distXY), init=conf0, ndim=q, k=k, tau=tau, itmax = 20)
 conf.lmds.zeros.res <- lmds.zeros.res$conf
 ```
 ```{r}
@@ -106,7 +106,7 @@ plot.zip(zeros[centroid,], TRUE, main = "Close to the origin")
 We therefore interpret $x_1$ as radius and $x_2$ as stroke width, since values with a very negative $x_1$ correspond to narrow zeros and values with a large $x_1$ correspond to wide zeros.
 The same reasoning applies to stroke width and $x_2$.
 
-In this sense, MDS is encoding a value proportional to the logarithm of the inverse of the stroke width in $x_2$ or radius in $x_1$.
+In this sense, MDS is encoding a value proportional to the logarithm of the inverse of the stroke width in $x_2$ or radius in $x_1$s.
 
 c.  (OPTIONAL) Relate the results from Local MDS with those obtained by the first 3 principal components. In particular, could you represent in any way the results obtained by Local MDS in the 3-dimensional scatterplot pf (PC1,PC2,PC3)?
 
@@ -120,40 +120,55 @@ library(vegan)
 conf.ismp.zeros.res <- isomap(distXY,k=5,ndim=2)$points
 ```
 ```{r}
-plot(ismp,main="Output of ISOMAP Algorithm", xlab="x1", ylab="x2")
-# Along x2 = 0
-ismp.x1 = which(abs(conf.ismp.zeros.res[,1]) < 1)
+plot(conf.ismp.zeros.res,main="Output of ISOMAP Algorithm", xlab="x1", ylab="x2")
 # Along x1 = 0
-ismp.x2 = which(abs(conf.ismp.zeros.res[,2]) < 1)
-plot(conf.ismp.zeros.res[ismp.x1,], as = 1,
-     xlab = "x1", ylab = "x2")
-points(conf.ismp.zeros.res[ismp.x2,])
-text(conf.ismp.zeros.res[ismp.x1,1],conf.ismp.zeros.res[ismp.x1,2],ismp.x1,pos=2, cex = 0.4)
-text(conf.ismp.zeros.res[ismp.x2,1],conf.ismp.zeros.res[ismp.x2,2],ismp.x2,pos=3, cex = 0.4)
-ismp.diag1 <- which(abs(conf.ismp.zeros.res[,1] - conf.ismp.zeros.res[,2]) < 1)
-ismp.diag2 <- which(abs(conf.ismp.zeros.res[,1] + conf.ismp.zeros.res[,2]) < 1)
-plot(conf.ismp.zeros.res[ismp.diag1,], as = 1,
-     xlab = "x1", ylab = "x2", xlim = c(-35, 40), ylim = c(-20, 20))
-text(conf.ismp.zeros.res[ismp.diag1,1],conf.ismp.zeros.res[ismp.diag1,2],ismp.diag1,pos=3, cex = 0.4)
-points(conf.ismp.zeros.res[ismp.diag2,],
-     xlab = "x1", ylab = "x2", xlim = c(-35, 40), ylim = c(-20, 20))
-text(conf.ismp.zeros.res[ismp.diag2,1],conf.ismp.zeros.res[ismp.diag2,2],ismp.diag2,pos=3, cex = 0.4)
+ismp.x1.idx <- abs(conf.ismp.zeros.res[,1]) < 2
+ismp.x1 <- conf.ismp.zeros.res[which(ismp.x1.idx),1]
+names(ismp.x1) <- which(ismp.x1.idx)
+ismp.x1 <- sort(ismp.x1)
+# Along x2 = 0
+ismp.x2.idx <- abs(conf.ismp.zeros.res[,2]) < 2
+ismp.x2 <- conf.ismp.zeros.res[which(ismp.x2.idx),1]
+names(ismp.x2) <- which(ismp.x2.idx)
+ismp.x2 <- sort(ismp.x2)
+# Along x1 = x2
+ismp.diag1.idx <- abs(conf.ismp.zeros.res[,1] - conf.ismp.zeros.res[,2]) < 1
+ismp.diag1.temp <- conf.ismp.zeros.res[which(ismp.diag1.idx),1]
+names(ismp.diag1.temp) <- which(ismp.diag1.idx)
+ismp.diag1.temp <- sort(ismp.diag1.temp)
+# Along x1 = -x2
+ismp.diag2.idx <- abs(conf.ismp.zeros.res[,1] + conf.ismp.zeros.res[,2]) < 1
+ismp.diag2.temp <- conf.ismp.zeros.res[which(ismp.diag2.idx),1]
+names(ismp.diag2.temp) <- which(ismp.diag2.idx)
+ismp.diag2.temp <- sort(ismp.diag2.temp)
 ```
 
-We select points  943, 1164, 1119, 1054, 458, 538, 57, 318, 860 and 914 for plotting, using the same criterion as above.
+We select points for plotting, using the same criterion as above.
 
 We now plot the corresponding digits.
 
 ```{r}
-plot.zip(zeros[943,], TRUE, main = "Very negative x1, almost zero x2")
-plot.zip(zeros[1164,], TRUE, main = "Very positive x1, almost zero x2")
-plot.zip(zeros[1119,], TRUE, main = "Almost zero x1, very negative x2")
-plot.zip(zeros[1054,], TRUE, main = "Almost zero x1, very positive x2")
-plot.zip(zeros[458,], TRUE, main = " Very negative x1 and x2")
-plot.zip(zeros[538,], TRUE, main = "Very positive x1 and x2")
-plot.zip(zeros[860,], TRUE, main = "Very negative x1, very positive x2")
-plot.zip(zeros[318,], TRUE, main = "Very positive x1, very negative x2")
-plot.zip(zeros[914,], TRUE, main = "Close to the origin")
+nx1.zx2 <- as.numeric(head(names(ismp.x2), 1))
+px1.zx2 <- as.numeric(tail(names(ismp.x2), 1))
+zx1.nx2 <- as.numeric(head(names(ismp.x1), 1))
+zx1.px2 <- as.numeric(tail(names(ismp.x1), 1))
+nx1.nx2 <- as.numeric(head(names(ismp.diag1.temp), 1))
+px1.px2 <- as.numeric(tail(names(ismp.diag1.temp), 1))
+nx1.px2 <- as.numeric(head(names(ismp.diag2.temp), 1))
+px1.nx2 <- as.numeric(tail(names(ismp.diag2.temp), 1))
+centroid <- as.numeric(names(ismp.x1[length(ismp.x1)/2]), 1)
+pts <- c(nx1.zx2, px1.zx2, zx1.nx2, zx1.px2, nx1.nx2, px1.px2, nx1.px2, px1.nx2, centroid)
+plot(conf.ismp.zeros.res[pts,])
+
+plot.zip(zeros[nx1.zx2,], TRUE, main = "Very negative x1, almost zero x2")
+plot.zip(zeros[px1.zx2,], TRUE, main = "Very positive x1, almost zero x2")
+plot.zip(zeros[zx1.nx2,], TRUE, main = "Almost zero x1, very negative x2")
+plot.zip(zeros[zx1.px2,], TRUE, main = "Almost zero x1, very positive x2")
+plot.zip(zeros[nx1.nx2,], TRUE, main = " Very negative x1 and x2")
+plot.zip(zeros[px1.px2,], TRUE, main = "Very positive x1 and x2")
+plot.zip(zeros[nx1.px2,], TRUE, main = "Very negative x1, very positive x2")
+plot.zip(zeros[px1.nx2,], TRUE, main = "Very positive x1, very negative x2")
+plot.zip(zeros[centroid,], TRUE, main = "Close to the origin")
 ```
 
 d. Compare your results using ISOMAP with those obtained using Local MDS.
