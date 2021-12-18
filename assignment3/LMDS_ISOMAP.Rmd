@@ -225,6 +225,10 @@ ISOMAP.max <- ISOMAP.eps[[i.max]]
 plot(v.k, LC, type="b", main=paste0("The k maximizing the LCMC is ",k.max))
 
 ```
+We now plot the resulting ISOMAP.
+```{r}
+plot(ISOMAP.max)
+```
 b. (OPTIONAL) Use the local continuity meta criteria to select the tuning parameters k and $\tau$ in Local MDS for ZERO digits. Then describe graphically the low dimensional configuration corresponding to the optimal parameter.
 
 ```{r}
@@ -250,6 +254,10 @@ ij.max <- arrayInd(which.max(LC),.dim=dim(LC))
 k.max <- K[ij.max[1]] 
 tau.max <- tau[ij.max[2]] 
 LocalMDS.max <- lmds.k.tau[[ij.max[1],ij.max[2]]]
-
 print(paste0("The values maximizing the LCMC are k = ",k.max,"; tau = ",tau.max))
+```
+
+We now plot the resulting LMDS.
+```{r}
+plot(LocalMDS.max$conf)
 ```
