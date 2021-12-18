@@ -1,0 +1,158 @@
+---
+title: 'Assignment: Local MDS and ISOMAP'
+author: "Kevin Michael Frick, Sonia Petrini, Patrick Lutz"
+output: pdf_document
+---
+
+# Local MDS for ZERO digits
+
+```{r setup, include=FALSE}
+library(stops)
+library(dplyr)
+zip.train <- read.table("zip.train")
+zeros <- filter(zip.train, V1==0)
+zeros <- as.matrix(zeros[,-1])
+# ploting 1 digit
+plot.zip <- function(x,use.first=FALSE,...){ x<-as.numeric(x)
+if (use.first){
+x.mat <- matrix(x,16,16) }else{
+x.mat <- matrix(x[-1],16,16) }
+image(1:16,1:16,x.mat[,16:1], col=gray(seq(1,0,l=12)),...)
+invisible(
+if (!use.first){
+title(x[1]) }else{
+} )
+  #col=gray(seq(1,0,l=2)))
+}
+
+```
+
+a. Look for a 2-dimensional (q = 2) configuration of the data using parameters k = 5 and τ = 0.05 in lmdsfunction. Do the scatterplot of the obtained 2-dimensional configuration.
+
+```{r}
+distXY <- dist(zeros)
+n <- dim(zeros)[1]
+
+k <- 5
+tau <- .05
+q<-2 # 2-dim config
+
+conf0 <- cmdscale(distXY, k=q)$points
+
+lmds.zeros.res <- lmds(as.matrix(distXY), init=conf0, ndim=q, k=k, tau=tau, itmax = 1000)
+conf.lmds.zeros.res <- lmds.zeros.res$conf
+```
+```{r}
+plot(conf.lmds.zeros.res, as=1, 
+     main=paste0("Local MDS, k=",k,", tau=",tau), 
+     xlab = "x1", ylab = "x2")
+text(conf.lmds.zeros.res[,1],conf.lmds.zeros.res[,2],1:n,pos=3, cex = 0.4)
+```
+b. In the previous scatterplot, select a few points (9 points, for instance) located in such a way that they cover the variability of all the points in the scatterplot. Then use the function plot.zip to plot the ZERO digits corresponding to the selected points. The images you are plotting should allows you to give an interpretation of the 2 coordinates obtained by Local MDS (observe how the shape of ZEROs changes when moving along each directions of the scatterplot).
+
+We plot the points that lie closest to the axes and then select those that lie at the extremes of the perpendicular axis,.
+
+```{r}
+# Along x2 = 0
+lmds.x1 = which(abs(conf.lmds.zeros.res[,1]) < 5)
+# Along x1 = 0
+lmds.x2 = which(abs(conf.lmds.zeros.res[,2]) < 5)
+plot(conf.lmds.zeros.res[lmds.x1,], as = 1,
+     xlab = "x1", ylab = "x2")
+points(conf.lmds.zeros.res[lmds.x2,])
+text(conf.lmds.zeros.res[lmds.x1,1],conf.lmds.zeros.res[lmds.x1,2],lmds.x1,pos=2, cex = 0.4)
+text(conf.lmds.zeros.res[lmds.x2,1],conf.lmds.zeros.res[lmds.x2,2],lmds.x2,pos=3, cex = 0.4)
+```
+
+We select points n. 1054 and 1126, which lie near the line $x_2 = 0$ and have extremely positive or negative values of component $x_1$, and points n. 826 and 619, which lie near the line $x_1 = 0$ and have extremely positive or negative values of component $x_2$.
+
+We then plot points which lie near the lines $x_1 = x_2$ and $x_1 = -x_2$.
+
+```{r}
+lmds.diag1 <- which(abs(conf.lmds.zeros.res[,1] - conf.lmds.zeros.res[,2]) < 1)
+lmds.diag2 <- which(abs(conf.lmds.zeros.res[,1] + conf.lmds.zeros.res[,2]) < 1)
+plot(conf.lmds.zeros.res[lmds.diag1,], as = 1,
+     xlab = "x1", ylab = "x2", xlim = c(-35, 40), ylim = c(-20, 20))
+text(conf.lmds.zeros.res[lmds.diag1,1],conf.lmds.zeros.res[lmds.diag1,2],lmds.diag1,pos=3, cex = 0.4)
+plot(conf.lmds.zeros.res[lmds.diag2,], as = 1,
+     xlab = "x1", ylab = "x2", xlim = c(-35, 40), ylim = c(-20, 20))
+text(conf.lmds.zeros.res[lmds.diag2,1],conf.lmds.zeros.res[lmds.diag2,2],lmds.diag2,pos=3, cex = 0.4)
+
+```
+
+We therefore select points 193, 57, 174, 420. Finally, we select point 433 as it's very close to the origin.
+
+We now plot the corresponding digits.
+
+```{r}
+plot.zip(zeros[1054,], TRUE, main = "Very negative x1, almost zero x2")
+plot.zip(zeros[1126,], TRUE, main = "Very positive x1, almost zero x2")
+plot.zip(zeros[826,], TRUE, main = "Almost zero x1, very negative x2")
+plot.zip(zeros[619,], TRUE, main = "Almost zero x1, very positive x2")
+plot.zip(zeros[193,], TRUE, main = " Very negative x1 and x2")
+plot.zip(zeros[57,], TRUE, main = "Very positive x1 and x2")
+plot.zip(zeros[420,], TRUE, main = "Very negative x1, very positive x2")
+plot.zip(zeros[744,], TRUE, main = "Very positive x1, very negative x2")
+plot.zip(zeros[433,], TRUE, main = "Close to the origin")
+```
+
+We therefore interpret $x_1$ as radius and $x_2$ as stroke width, since zeros that have very large absolute values of $x_1$
+
+c.  (OPTIONAL) Relate the results from Local MDS with those obtained by the first 3 principal components. In particular, could you represent in any way the results obtained by Local MDS in the 3-dimensional scatterplot pf (PC1,PC2,PC3)?
+
+
+# ISOMAP for ZERO digits
+
+a, b, c. Repeat previous points a and b (and OPTIONALLY c) but using now ISOMAP. Use function `isomap` from package vegan and use parameter k = 5 (instead of using $\epsilon$).
+
+```{r}
+library(vegan)
+conf.ismp.zeros.res <- isomap(distXY,k=5,ndim=2)$points
+```
+```{r}
+plot(ismp,main="Output of ISOMAP Algorithm", xlab="x1", ylab="x2")
+# Along x2 = 0
+ismp.x1 = which(abs(conf.ismp.zeros.res[,1]) < 1)
+# Along x1 = 0
+ismp.x2 = which(abs(conf.ismp.zeros.res[,2]) < 1)
+plot(conf.ismp.zeros.res[ismp.x1,], as = 1,
+     xlab = "x1", ylab = "x2")
+points(conf.ismp.zeros.res[ismp.x2,])
+text(conf.ismp.zeros.res[ismp.x1,1],conf.ismp.zeros.res[ismp.x1,2],ismp.x1,pos=2, cex = 0.4)
+text(conf.ismp.zeros.res[ismp.x2,1],conf.ismp.zeros.res[ismp.x2,2],ismp.x2,pos=3, cex = 0.4)
+ismp.diag1 <- which(abs(conf.ismp.zeros.res[,1] - conf.ismp.zeros.res[,2]) < 1)
+ismp.diag2 <- which(abs(conf.ismp.zeros.res[,1] + conf.ismp.zeros.res[,2]) < 1)
+plot(conf.ismp.zeros.res[ismp.diag1,], as = 1,
+     xlab = "x1", ylab = "x2", xlim = c(-35, 40), ylim = c(-20, 20))
+text(conf.ismp.zeros.res[ismp.diag1,1],conf.ismp.zeros.res[ismp.diag1,2],ismp.diag1,pos=3, cex = 0.4)
+points(conf.ismp.zeros.res[ismp.diag2,],
+     xlab = "x1", ylab = "x2", xlim = c(-35, 40), ylim = c(-20, 20))
+text(conf.ismp.zeros.res[ismp.diag2,1],conf.ismp.zeros.res[ismp.diag2,2],ismp.diag2,pos=3, cex = 0.4)
+```
+
+We select points  943, 1164, 1119, 1054, 458, 538, 57, 318, 860 and 914 for plotting, using the same criterion as above.
+
+We now plot the corresponding digits.
+
+```{r}
+plot.zip(zeros[943,], TRUE, main = "Very negative x1, almost zero x2")
+plot.zip(zeros[1164,], TRUE, main = "Very positive x1, almost zero x2")
+plot.zip(zeros[1119,], TRUE, main = "Almost zero x1, very negative x2")
+plot.zip(zeros[1054,], TRUE, main = "Almost zero x1, very positive x2")
+plot.zip(zeros[458,], TRUE, main = " Very negative x1 and x2")
+plot.zip(zeros[538,], TRUE, main = "Very positive x1 and x2")
+plot.zip(zeros[860,], TRUE, main = "Very negative x1, very positive x2")
+plot.zip(zeros[318,], TRUE, main = "Very positive x1, very negative x2")
+plot.zip(zeros[914,], TRUE, main = "Close to the origin")
+```
+
+d. Compare your results using ISOMAP with those obtained using Local MDS.
+
+This time, we see that very positive values of $x_1$ correspond to higher radius, while very negative values of $x_1$ correspond to a lower radius. Compared to MDS, we see that it is not the magnitude of the value that influences the radius, but rather its absolute position on the scale, as if it encoded a value proportional to the logarithm of the radius.
+
+We also see that very negative values of $x_2$ correspond to a thicker stroke width, while very positive values correspond to a narrower width. In this sense, it is encoding a value proportional to the logarithm of the inverse of the stroke width.
+
+# Selecting the tuning parameters for ZERO digits
+
+a. Use the local continuity meta criteria to select the tuning parameter k in ISOMAP for ZERO digits. Then describe graphically the low dimensional configuration corresponding to the optimal parameter.
+b. (OPTIONAL) Use the local continuity meta criteria to select the tuning parameters k and $\tau$ in Local MDS for ZERO digits. Then describe graphically the low dimensional configuration corresponding to the optimal parameter.
