@@ -9,6 +9,9 @@ output: pdf_document
 ```{r setup, include=FALSE}
 library(stops)
 library(dplyr)
+library(ggplot2)
+library(reshape2)
+library(ggpubr)
 zip.train <- read.table("zip.train")
 zeros <- filter(zip.train, V1==0)
 zeros <- as.matrix(zeros[,-1])
@@ -28,7 +31,9 @@ title(x[1]) }else{
 
 ```
 
-a. Look for a 2-dimensional ($q = 2$) configuration of the data using parameters $k = 5$ and $\tau = 0.05$ in lmds function. Do the scatterplot of the obtained 2-dimensional configuration.
+## a
+
+Look for a 2-dimensional ($q = 2$) configuration of the data using parameters $k = 5$ and $\tau = 0.05$ in lmds function. Do the scatterplot of the obtained 2-dimensional configuration.
 
 ```{r}
 distXY <- dist(zeros)
@@ -53,8 +58,11 @@ plot(conf.lmds.zeros.res, as=1,
 
 
 
+## b
 
-b. In the previous scatterplot, select a few points (9 points, for instance) located in such a way that they cover the variability of all the points in the scatterplot. Then use the function plot.zip to plot the ZERO digits corresponding to the selected points. The images you are plotting should allows you to give an interpretation of the 2 coordinates obtained by Local MDS (observe how the shape of ZEROs changes when moving along each directions of the scatterplot).
+In the previous scatterplot, select a few points (9 points, for instance) located in such a way that they cover the variability of all the points in the scatterplot. Then use the function plot.zip to plot the ZERO digits corresponding to the selected points. The images you are plotting should allows you to give an interpretation of the 2 coordinates obtained by Local MDS (observe how the shape of ZEROs changes when moving along each directions of the scatterplot).
+
+### Representative digits
 
 We select arrays containing the points that lie closest to the axes and then select those that lie at the extremes of the perpendicular axis. We do the same with the points which lie near the lines $x_1 = x_2$ and $x_1 = -x_2$.
 That is, in order to understand the meaning of the two retained dimensions, we select 9 representative examples by considering all 9 combinations of low, around 0, and high values of $x_1$ and $x_2$.
@@ -84,11 +92,16 @@ ReprPoints <- function(config,refD2,refD1=NULL,setD1=F) {
   pts
 }
 
+PlotWithRepr <- function(config,pts,main="Configuration",xlab="D1",ylab="D2") {
+  plot(config, as=1,
+     main=main,
+     xlab = xlab, ylab = ylab, col= ifelse(rownames(config) %in% pts,"magenta","black"),
+     pch= ifelse(rownames(config) %in% pts,19,1), cex= ifelse(rownames(config) %in% pts,2,1))
+}
+
 pts <- ReprPoints(conf.lmds.zeros.res,c(15,15),c(15,15),setD1 = T)
-plot(conf.lmds.zeros.res, as=1,
-     main=paste0("Local MDS, k=",k,", tau=",tau),
-     xlab = "x1", ylab = "x2", col= ifelse(rownames(conf.lmds.zeros.res) %in% pts,"magenta","black"),
-     pch= ifelse(rownames(conf.lmds.zeros.res) %in% pts,19,1))
+PlotWithRepr(conf.lmds.zeros.res, pts, main = paste0("Local MDS, k=",k,", tau=",tau))
+
 ```
 
 
@@ -121,36 +134,76 @@ The first dimension seems to account for the flatness of the zero: as we move to
 
 
 
-c.  (OPTIONAL) Relate the results from Local MDS with those obtained by the first 3 principal components. In particular, could you represent in any way the results obtained by Local MDS in the 3-dimensional scatterplot pf (PC1,PC2,PC3)?
+## c (OPTIONAL) 
 
-We perform PCA on our dataset and plot the three possible combinations of principal components.
+Relate the results from Local MDS with those obtained by the first 3 principal components. In particular, could you represent in any way the results obtained by Local MDS in the 3-dimensional scatter plot pf (PC1,PC2,PC3)?
+
+We perform PCA on our dataset and plot the configuration obtained with the first two dimensions. Again, we pick some representative points to understand the underlying concepts.
 
 ```{r}
 zeros.pca <- princomp(as.matrix(zeros))
 pc1 <- zeros.pca$scores[,1]
 pc2 <- zeros.pca$scores[,2]
 pc3 <- zeros.pca$scores[,3]
-plot(pc1, pc2)
-plot(pc1, pc3)
-plot(pc2, pc3)
 
-pts12 <- ReprPoints(cbind(pc1, pc2),range(pc1))
-PlotReprZeros(pts12, "PC1", "PC2")
-pts23 <- ReprPoints(cbind(pc2, pc3),range(pc3))
-PlotReprZeros(pts23, "PC2", "PC3")
-pts13 <- ReprPoints(cbind(pc1, pc3),range(pc3))
-PlotReprZeros(pts13, "PC1", "PC3")
-
-
+pts12 <- ReprPoints(cbind(pc1, pc2),c(7,7))
+pts23 <- ReprPoints(cbind(pc2, pc3),c(7,5),c(7,7),setD1 = T)
+pts31 <- ReprPoints(cbind(pc3, pc1),c(7,7),c(7,5),setD1 = T)
+par(mfrow=c(1,3))
+PlotWithRepr(cbind(pc1, pc2),pts12,main="PCA configuration, D1 and D2",xlab="D1",ylab="D2")
+PlotWithRepr(cbind(pc2, pc3),pts23,main="PCA configuration, D2 and D3",xlab="D2",ylab="D3")
+PlotWithRepr(cbind(pc3, pc1),pts31,main="PCA configuration, D3 and D1",xlab="D3",ylab="D1")
 ```
 
-From the plots, we see that increasing values of PC1 correspond to lower radii, thus a narrower zero.
-On the other hand, increasing values of PC2 correspond to thicker strokes.
-In both cases, a low value of PC3 seems to reduce the influence of PC1 and PC2 and make for "more equal" zeros.
+### Representative digits
+
+Again, the first dimension is related to the flatness of the zero, but the difference across the range of $PC1$ values  is less evident with respect to LMDS. Moreover, the direction of the effect is the opposite compared to LMDS: higher $PC1$ values imply a thinner digit. The second principal component is again an indicator of the stroke width, and it moves in the same direction as in LMDS. In both cases, a low value of $PC3$ seems to reduce the influence of $PC1$ and $PC2$ and make for "more equal" zeros.
+
+```{r}
+PlotReprZeros(pts12, "PC1", "PC2")
+PlotReprZeros(pts23, "PC2", "PC3")
+PlotReprZeros(pts31, "PC3", "PC1")
+```
+
+
+### 2-D configuration comparison
+
+We plot the configurations obtained with PCA (first two components) and with Local MDS. As expected, LMDS in this case does a better job at recovering a good 2-dimensional representation of the data. The first LMDS coordinate clearly explains more variability than the first principal component. This is consistent with what we observed above by visualizing some representative digits: the differences within LMDS embedded digits across the first dimension where much more evident than those in the PCA ones.
+
+```{r}
+pl_pc <- ggplot(df, aes(pc1,pc2)) + geom_point() + xlim(c(-30,30)) + labs(title="PCA configuration")
+pl_lmds <- ggplot(df, aes(lmds1,lmds2)) + geom_point() + xlim(c(-30,30)) + labs(title="LMDS configuration")
+ggarrange(pl_pc,pl_lmds,nrow=2)
+```
+
+### Dimensions Correlation
+
+To confirm our impressions on the relations between the first and the second dimensions retained by PCA and LMDS, we compute the correlations between them, and display their scatter plots. As expected from visualizing the representative digits, while the two first components $pc1$ and $lmds1$ are strongly negatively related, the two second ones, $pc2$ and $lmds2$, have the opposite relation, but equally strong. This means that their underlying concept is the same, but in PCA the first one moves in the opposite direction.
+
+```{r}
+lmds1 <- conf.lmds.zeros.res[,1]
+lmds2 <- conf.lmds.zeros.res[,2]
+
+df <- data.frame(pc1,pc2,pc3,lmds1,lmds2)
+pl1 <- df %>% ggplot(aes(pc1,lmds1)) + geom_point()
+pl2 <- df %>% ggplot(aes(pc2,lmds2)) + geom_point()
+pl3 <- df %>% cor() %>% round(2) %>% melt() %>%
+ggplot(aes(x=Var1, y=Var2, fill=value, label = value)) + 
+  geom_tile() + geom_text() + scale_fill_gradient2(low = "blue", high = "red", mid = "white", 
+   midpoint = 0, limit = c(-1,1), space = "Lab", 
+   name="Corr")
+
+ggarrange(pl3,ggarrange(pl1,pl2,nrow=2))
+```
+
+
 
 # ISOMAP for ZERO digits
 
-a, b, c. Repeat previous points a and b (and OPTIONALLY c) but using now ISOMAP. Use function `isomap` from package vegan and use parameter k = 5 (instead of using $\epsilon$).
+## a, b, c 
+
+Repeat previous points a and b (and OPTIONALLY c) but using now ISOMAP. Use function `isomap` from package vegan and use parameter k = 5 (instead of using $\epsilon$).
+
 
 ```{r}
 library(vegan)
@@ -158,56 +211,34 @@ conf.ismp.zeros.res <- isomap(distXY,k=5,ndim=2)$points
 rownames(conf.ismp.zeros.res) <- seq(1,nrow(conf.ismp.zeros.res))
 ```
 
-```{r}
-plot(conf.ismp.zeros.res,main="Output of ISOMAP Algorithm", xlab="x1", ylab="x2")
-# Along x1 = 0
-ismp.x1.idx <- abs(conf.ismp.zeros.res[,1]) < 2
-ismp.x1 <- conf.ismp.zeros.res[which(ismp.x1.idx),1]
-names(ismp.x1) <- which(ismp.x1.idx)
-ismp.x1 <- sort(ismp.x1)
-# Along x2 = 0
-ismp.x2.idx <- abs(conf.ismp.zeros.res[,2]) < 2
-ismp.x2 <- conf.ismp.zeros.res[which(ismp.x2.idx),1]
-names(ismp.x2) <- which(ismp.x2.idx)
-ismp.x2 <- sort(ismp.x2)
-# Along x1 = x2
-ismp.diag1.idx <- abs(conf.ismp.zeros.res[,1] - conf.ismp.zeros.res[,2]) < 1
-ismp.diag1.temp <- conf.ismp.zeros.res[which(ismp.diag1.idx),1]
-names(ismp.diag1.temp) <- which(ismp.diag1.idx)
-ismp.diag1.temp <- sort(ismp.diag1.temp)
-# Along x1 = -x2
-ismp.diag2.idx <- abs(conf.ismp.zeros.res[,1] + conf.ismp.zeros.res[,2]) < 1
-ismp.diag2.temp <- conf.ismp.zeros.res[which(ismp.diag2.idx),1]
-names(ismp.diag2.temp) <- which(ismp.diag2.idx)
-ismp.diag2.temp <- sort(ismp.diag2.temp)
-```
-
-We select points for plotting, using the same criterion as above, and plot the corresponding digits.
+### Configuration
 
 ```{r}
 pts <- ReprPoints(conf.ismp.zeros.res,c(15,18),c(25,23),setD1 = T)
-plot(conf.ismp.zeros.res, as=1,
-     main=paste0("ISOMAP MDS, k = ",k),
-     xlab = "Dim 1", ylab = "Dim 2",col= ifelse(rownames(conf.ismp.zeros.res) %in% pts,"magenta","black"),
-     pch= ifelse(rownames(conf.ismp.zeros.res) %in% pts,19,1))
+PlotWithRepr(conf.ismp.zeros.res,pts,main=paste0("ISOMAP MDS, k = ",k),"Dim 1","Dim 2")
 ```
+
+### Representative Digits
 
 ```{r}
 PlotReprZeros(pts)
 ```
 
-d. Compare your results using ISOMAP with those obtained using Local MDS.
+
+
+## d
+Compare your results using ISOMAP with those obtained using Local MDS.
 
 Again, the first dimension is clearly discriminating the digits based on the shape, with a high $x_1$ value corresponding to a flatter zero. However, we now don't see a linear relation between the second dimension and stroke width, as was instead identified with Local MDS. In this case stroke width seems to be related to the interplay of the two dimensions: the digit with the thickest stroke is the one with a low value in $x_2$ and  $x_1$ around 0.
 
 
 
 
-
-
 # Selecting the tuning parameters for ZERO digits
 
-a. Use the local continuity meta criteria to select the tuning parameter k in ISOMAP for ZERO digits. Then describe graphically the low dimensional configuration corresponding to the optimal parameter.
+## a 
+
+Use the local continuity meta criteria to select the tuning parameter k in ISOMAP for ZERO digits. Then describe graphically the low dimensional configuration corresponding to the optimal parameter.
 
 
 ```{r}
@@ -256,6 +287,8 @@ abline(v=k.max,lty="dashed",col="red")
 ```
 
 
+## Best configuration
+
 We now plot the resulting Tuned ISOMAP.
 
 ```{r}
@@ -264,8 +297,10 @@ plot(ISOMAP.max, main=paste("Tuned ISOMAP MDS, k =",k.max),col="#cc3366",xlim=c(
 plot(conf.ismp.zeros.res, as=1, main=paste0("ISOMAP MDS, k = ",k), col="darkgreen", xlab = "Dim1", ylab = "Dim2",xlim=c(-65,65))
 ```
 
- By tuning the parameter $k$ through the local continuity meta criteria, we identify 3 as the optimal number of neighbours to consider. We plot the resulting configuration, together with the initial one, obtained with $k$ = 5. As we can see, with the tuned parameter both dimensions allow one to explain a greater portion of the data variability, compared to the first estimated configuration with an arbitrary $k$: in fact, the observations now spread wider both on the x and the y axis. However, the overall shape of the data remains the same.
+ By tuning the parameter $k$ through the local continuity meta criteria, we identify 3 as the optimal number of neighbors to consider. We plot the resulting configuration, together with the initial one, obtained with $k$ = 5. As we can see, with the tuned parameter both dimensions allow one to explain a greater portion of the data variability, compared to the first estimated configuration with an arbitrary $k$: in fact, the observations now spread wider both on the x and the y axis. However, the overall shape of the data remains the same.
 
+
+### Real vs Estimated distances
 
 Then, we display a scatter plot of the real distances against the best estimated ones.
 
@@ -285,7 +320,9 @@ plot(iso.dist.k3[sample],real.dist[sample],main="ISOMAP: real vs estimated dista
 As we can see, ISOMAP managed to fairly recover the original distances, retaining their natural increasing ordering. As a matter of fact, real distances show a higher increase with respect to the estimated ones, especially for low values. We see that, evaluating ISOMAP this way, using $k = 3$ yields a more faithful representation compared with $k = 5$.
 
 
-b. (OPTIONAL) Use the local continuity meta criteria to select the tuning parameters k and $\tau$ in Local MDS for ZERO digits. Then describe graphically the low dimensional configuration corresponding to the optimal parameter.
+## b (OPTIONAL) 
+
+Use the local continuity meta criteria to select the tuning parameters k and $\tau$ in Local MDS for ZERO digits. Then describe graphically the low dimensional configuration corresponding to the optimal parameter.
 
 ```{r}
 q <- 2
@@ -314,28 +351,32 @@ print(paste0("The values maximizing the LCMC are k = ",k.max,"; tau = ",tau.max)
 ```
 
 
+### Best configuration
+
 We now plot the resulting Tuned LMDS.
 
 ```{r}
-lmds.k5.tau1 <- lmds(as.matrix(distXY), k=5, ndim=q, tau=1, itmax=20)
-lmds.k3.tau05 <- lmds(as.matrix(distXY), k=3, ndim=q, tau=0.05, itmax=20)
+lmds.best.tau <- lmds(as.matrix(distXY), k=5, ndim=q, tau=tau.max, itmax=20)
+lmds.best.k   <- lmds(as.matrix(distXY), k=k.max, ndim=q, tau=0.05, itmax=20)
 
 par(mfrow=c(2,2))
 plot(LocalMDS.max$conf,main=paste("Tuned LMDS, best k = ",k.max,", best tau = ",tau.max,sep=""),
-     xlab="Dim 1", ylab="Dim 2",col="#cc3366",xlim=c(-150,230),ylim=c(-500,200))
-plot(lmds.k5.tau1$conf,main=paste("LMDS, k = ",5,", best tau = ",tau.max,sep=""),
-     xlab="Dim 1", ylab="Dim 2",col="darkgreen",xlim=c(-150,230),ylim=c(-500,200))
-plot(lmds.k3.tau05$conf,main=paste("LMDS, best k = ",k.max,", tau = ",0.05,sep=""),
-     xlab="Dim 1", ylab="Dim 2",col="darkgreen",xlim=c(-30,30),ylim=c(-30,30))
+     xlab="Dim 1", ylab="Dim 2",col="#cc3366",xlim=c(-150,230),ylim=c(-570,200))
+plot(lmds.best.tau$conf,main=paste("LMDS, k = ",5,", best tau = ",tau.max,sep=""),
+     xlab="Dim 1", ylab="Dim 2",col="darkgreen",xlim=c(-150,230),ylim=c(-570,200))
+plot(lmds.best.k$conf,main=paste("LMDS, best k = ",k.max,", tau = ",0.05,sep=""),
+     xlab="Dim 1", ylab="Dim 2",col="darkgreen",xlim=c(-40,40),ylim=c(-30,30))
 plot(conf.lmds.zeros.res,main=paste("LMDS, k = ",5,", tau = ",0.05,sep=""),
-     xlab="Dim 1", ylab="Dim 2",col="darkgreen",xlim=c(-30,30),ylim=c(-30,30))
+     xlab="Dim 1", ylab="Dim 2",col="darkgreen",xlim=c(-40,40),ylim=c(-30,30))
 ```
 
 Given that we are optimizing two parameters, we here display the best configuration, the original arbitrary one, and the two intermediate cases, where first $tau$, then $k$ are set to their optimal values.
 We do this in order to appreciate the effect of modifying any of the two values separately.
-First, we notice that the biggest effect is conveyed through $tau$: as we keep $k$ = 5 and we move $tau$ from 0.05 to 1, the data spreads on a much larger scale along both dimensions (in particular the first one). On the contrary, keeping $tau$ fixed and increasing $k$ from 3 to 5 allows for some flattening of the data, but the difference is much less evident, and both dimensions stay in the same order of magnitude.
-Finally, setting both parameters to their optimal values leads to the configuration in pink, which now fairly approaches linearity: the first dimension is able to grasp great variability in the data. Notice that for the same best $tau$, the difference in the configurations is mainly related to the outliers present in the best case. It seems like a lower $k$ value forces these points to be very far from each other, since their distances have not been categorized as "short", while this doesn't happen for a higher $k$ value. Thus, we conclude that Local MDS is very sensitive to a reasoned choice of $tau$, while less to the choice of paramter $k$.
+First, we notice that the biggest effect is conveyed through $tau$: as we keep $k$ = 5 and we move $tau$ from 0.05 to 1, the data spreads on a much larger scale along both dimensions (in particular the first one). On the contrary, keeping $tau$ fixed and increasing $k$ from 5 to 10 allows for some flattening of the data, but the difference is much less evident, and both dimensions stay in the same order of magnitude.
+Finally, setting both parameters to their optimal values leads to the configuration in pink, which now fairly approaches linearity: the first dimension is able to grasp great variability in the data. Notice that for the same best $tau$, the difference in the configurations is mainly related to the outliers present in the best case. It seems like a higher $k$ value forces these points to be close to each other. Thus, we conclude that Local MDS is very sensitive to a reasoned choice of $tau$, while less to the choice of parameter $k$.
 
+
+### Real vs Estimated distances
 
 Again, we also report the scatter plot of the real distances against the estimated ones.
 
