@@ -64,8 +64,8 @@ In the previous scatterplot, select a few points (9 points, for instance) locate
 
 ### Representative digits
 
-We select arrays containing the points that lie closest to the axes and then select those that lie at the extremes of the perpendicular axis. We do the same with the points which lie near the lines $x_1 = x_2$ and $x_1 = -x_2$.
-That is, in order to understand the meaning of the two retained dimensions, we select 9 representative examples by considering all 9 combinations of low, around 0, and high values of $x_1$ and $x_2$.
+In order to understand the meaning of the two retained dimensions, we select 9 representative examples by considering all 9 combinations of low, around 0, and high values of $x_1$ and $x_2$.
+To do so, we select arrays containing the points that lie closest to the axes and then select those that lie at the extremes of these arrays. We do the same with the points which lie near the lines $x_1 = x_2$ and $x_1 = -x_2$.
 
 ```{r}
 ReprPoints <- function(config,refD2,refD1=NULL,setD1=F) {
@@ -136,7 +136,7 @@ The first dimension seems to account for the flatness of the zero: as we move to
 
 ## c (OPTIONAL) 
 
-Relate the results from Local MDS with those obtained by the first 3 principal components. In particular, could you represent in any way the results obtained by Local MDS in the 3-dimensional scatter plot pf (PC1,PC2,PC3)?
+Relate the results from Local MDS with those obtained by the first 3 principal components. In particular, could you represent in any way the results obtained by Local MDS in the 3-dimensional scatter plot of (PC1,PC2,PC3)?
 
 We perform PCA on our dataset and plot the configuration obtained with the first two dimensions. Again, we pick some representative points to understand the underlying concepts.
 
@@ -157,7 +157,7 @@ PlotWithRepr(cbind(pc3, pc1),pts31,main="PCA configuration, D3 and D1",xlab="D3"
 
 ### Representative digits
 
-Again, the first dimension is related to the flatness of the zero, but the difference across the range of $PC1$ values  is less evident with respect to LMDS. Moreover, the direction of the effect is the opposite compared to LMDS: higher $PC1$ values imply a thinner digit. The second principal component is again an indicator of the stroke width, and it moves in the same direction as in LMDS. In both cases, a low value of $PC3$ seems to reduce the influence of $PC1$ and $PC2$ and make for "more equal" zeros.
+Again, the first dimension is related to the flatness of the zero, but the difference across the range of $PC1$ values  is less evident with respect to LMDS. Moreover, the direction of the effect is the opposite compared to LMDS: higher $PC1$ values imply a thinner digit. The second principal component is again an indicator of the stroke width, and it moves in the same direction as in LMDS. In both cases, a low value of $PC3$ seems to reduce the influence of $PC1$ and $PC2$ and make for "more equal" zeros, as if $PC3$ encoded a notion of "variability" of the points.
 
 ```{r}
 PlotReprZeros(pts12, "PC1", "PC2")
@@ -171,6 +171,9 @@ PlotReprZeros(pts31, "PC3", "PC1")
 We plot the configurations obtained with PCA (first two components) and with Local MDS. As expected, LMDS in this case does a better job at recovering a good 2-dimensional representation of the data. The first LMDS coordinate clearly explains more variability than the first principal component. This is consistent with what we observed above by visualizing some representative digits: the differences within LMDS embedded digits across the first dimension where much more evident than those in the PCA ones.
 
 ```{r}
+lmds1 <- conf.lmds.zeros.res[,1]
+lmds2 <- conf.lmds.zeros.res[,2]
+df <- data.frame(pc1,pc2,pc3,lmds1,lmds2)
 pl_pc <- ggplot(df, aes(pc1,pc2)) + geom_point() + xlim(c(-30,30)) + labs(title="PCA configuration")
 pl_lmds <- ggplot(df, aes(lmds1,lmds2)) + geom_point() + xlim(c(-30,30)) + labs(title="LMDS configuration")
 ggarrange(pl_pc,pl_lmds,nrow=2)
@@ -181,10 +184,7 @@ ggarrange(pl_pc,pl_lmds,nrow=2)
 To confirm our impressions on the relations between the first and the second dimensions retained by PCA and LMDS, we compute the correlations between them, and display their scatter plots. As expected from visualizing the representative digits, while the two first components $pc1$ and $lmds1$ are strongly negatively related, the two second ones, $pc2$ and $lmds2$, have the opposite relation, but equally strong. This means that their underlying concept is the same, but in PCA the first one moves in the opposite direction.
 
 ```{r}
-lmds1 <- conf.lmds.zeros.res[,1]
-lmds2 <- conf.lmds.zeros.res[,2]
 
-df <- data.frame(pc1,pc2,pc3,lmds1,lmds2)
 pl1 <- df %>% ggplot(aes(pc1,lmds1)) + geom_point()
 pl2 <- df %>% ggplot(aes(pc2,lmds2)) + geom_point()
 pl3 <- df %>% cor() %>% round(2) %>% melt() %>%
@@ -196,13 +196,37 @@ ggplot(aes(x=Var1, y=Var2, fill=value, label = value)) +
 ggarrange(pl3,ggarrange(pl1,pl2,nrow=2))
 ```
 
+### 2D and 3D configurations
 
+We plot the 3D configuration obtained by PCA. 
+
+```{r}
+library(plot3D)
+points3D(pc1, pc2, pc3, colvar=NULL, phi = 20, theta = 60, r =sqrt(3), d =3, scale=F,
+         col=4)
+```
+
+The projection of the previous plot on the (PC1, PC2) plane is very similar to the results of LMDS, as shown by the following plot.
+```{r}
+par(mfrow=c(1,2))
+plot(conf.lmds.zeros.res)
+plot(pc1, pc2)
+```
+Finally, since low values of PC3 coincide with low variability, we choose to perform a dimensionality expansion on the LMDS results and add a third dimension $z = D_1^2 + D_2^2$.
+We choose this function since it will be low for data points that lie very close to the center, and thus have lower variability.
+The resulting plot is similar to what we observe with PCA, as we can see from the following 3D scatterplot.
+
+```{r}
+points3D(lmds1, lmds2, lmds1^2 + lmds2^2, colvar=NULL, phi = 20, theta = 60, r =sqrt(3), d =3, scale=T, col=4, xlim = range(lmds1), ylim = range(lmds2))
+```
 
 # ISOMAP for ZERO digits
 
 ## a, b, c 
 
 Repeat previous points a and b (and OPTIONALLY c) but using now ISOMAP. Use function `isomap` from package vegan and use parameter k = 5 (instead of using $\epsilon$).
+
+For this part, all comments are moved to section **d** in order to better compare the results of ISOMAP and LMDS.
 
 
 ```{r}
@@ -224,6 +248,36 @@ PlotWithRepr(conf.ismp.zeros.res,pts,main=paste0("ISOMAP MDS, k = ",k),"Dim 1","
 PlotReprZeros(pts)
 ```
 
+### Comparison with PCA
+
+We first test the correlation between the first two principal components and the two components that result from ISOMAP.
+
+```{r}
+iso1 <- conf.ismp.zeros.res[,1]
+iso2 <- conf.ismp.zeros.res[,2]
+df <- data.frame(pc1, pc2, pc3, iso1, iso2)
+pl1 <- df %>% ggplot(aes(pc1,iso1)) + geom_point()
+pl2 <- df %>% ggplot(aes(pc2,iso2)) + geom_point()
+pl3 <- df %>% cor() %>% round(2) %>% melt() %>%
+ggplot(aes(x=Var1, y=Var2, fill=value, label = value)) + 
+  geom_tile() + geom_text() + scale_fill_gradient2(low = "blue", high = "red", mid = "white", 
+   midpoint = 0, limit = c(-1,1), space = "Lab", 
+   name="Corr")
+
+ggarrange(pl3,ggarrange(pl1,pl2,nrow=2))
+```
+We then plot the first two principal components side-by-side with the two ISOMAP components.
+
+```{r}
+par(mfrow=c(1,2))
+plot(iso1, iso2)
+plot(pc1, pc2)
+```
+Finally, we perform dimensionality expansion as before.
+
+```{r}
+points3D(iso1, iso2, iso1^2 + iso2^2, colvar=NULL, phi = 20, theta = 60, r =sqrt(3), d =3, scale=T, col=4, xlim = range(lmds1), ylim = range(lmds2))
+```
 
 
 ## d
@@ -231,8 +285,9 @@ Compare your results using ISOMAP with those obtained using Local MDS.
 
 Again, the first dimension is clearly discriminating the digits based on the shape, with a high $x_1$ value corresponding to a flatter zero. However, we now don't see a linear relation between the second dimension and stroke width, as was instead identified with Local MDS. In this case stroke width seems to be related to the interplay of the two dimensions: the digit with the thickest stroke is the one with a low value in $x_2$ and  $x_1$ around 0.
 
+This is reflected in the correlation plots with principal components, where the correlation between $PC1$ and the first ISOMAP component shows the same trend as with LMDS, but the correlation between $PC2$ and the second ISOMAP component is negative, but less strong as it has a lower correlation coefficient.
 
-
+This also results in a plot that looks different from the one containing the first two principal components, and dimensionality expansion produces a three-dimensional plot that is less similar to the three-dimensional scatter plot of principal components.
 
 # Selecting the tuning parameters for ZERO digits
 
@@ -381,6 +436,8 @@ Finally, setting both parameters to their optimal values leads to the configurat
 Again, we also report the scatter plot of the real distances against the estimated ones.
 
 ```{r}
+lmds.k5.tau1 <- lmds(as.matrix(distXY), k=5, ndim=q, tau=1, itmax=20)
+lmds.k3.tau05 <- lmds(as.matrix(distXY), k=3, ndim=q, tau=0.05, itmax=20)
 LMDS.dist  <- sort(dist(LocalMDS.max$conf))
 k5.tau1.dist <- sort(dist(lmds.k5.tau1$conf))
 k3.tau05.dist <- sort(dist(lmds.k3.tau05$conf))
