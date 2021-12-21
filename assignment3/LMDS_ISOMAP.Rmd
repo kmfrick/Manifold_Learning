@@ -45,7 +45,8 @@ q<-2 # 2-dim config
 
 conf0 <- cmdscale(distXY, k=q)$points
 
-lmds.zeros.res <- lmds(as.matrix(distXY), init=conf0, ndim=q, k=k, tau=tau, itmax = 20)
+lmds.zeros.res <- lmds(as.matrix(distXY), init=conf0, ndim=q, k=k, tau=tau, 
+                       itmax = 20)
 conf.lmds.zeros.res <- lmds.zeros.res$conf
 rownames(conf.lmds.zeros.res) <- seq(1,nrow(conf.lmds.zeros.res))
 
@@ -65,7 +66,7 @@ In the previous scatterplot, select a few points (9 points, for instance) locate
 ### Representative digits
 
 In order to understand the meaning of the two retained dimensions, we select 9 representative examples by considering all 9 combinations of low, around 0, and high values of $x_1$ and $x_2$.
-To do so, we select arrays containing the points that lie closest to the axes and then select those that lie at the extremes of these arrays. We do the same with the points which lie near the lines $x_1 = x_2$ and $x_1 = -x_2$.
+To do so, we select arrays containing the points that lie closest to the axes and then select those that lie at the extremes of these arrays. We do the same with the points which lie near the lines $x_1 = x_2$ and $x_1 = -x_2$. We plot the selected points in purple over the previous scatter plot.
 
 ```{r}
 ReprPoints <- function(config,refD2,refD1=NULL,setD1=F) {
@@ -78,9 +79,11 @@ ReprPoints <- function(config,refD2,refD1=NULL,setD1=F) {
                                 "null.D2" = (abs(config$D2 + 0) < 1),
                                 "low.D2"  = (abs(config$D2 + refD2[2]) < 2))
     if (setD1==T) {
-      lowD1  <- config[D2condition,] %>% filter(abs(D1 + refD1[2]) < 2) %>% slice(1)
+      lowD1  <- config[D2condition,] %>% filter(abs(D1 + refD1[2]) < 2) %>% 
+        slice(1)
       zeroD1 <- config[D2condition,] %>% filter(abs(D1 + 0) < 1) %>% slice(1)
-      highD1 <- config[D2condition,] %>% filter(abs(D1 - refD1[1]) < 2) %>% slice(1)
+      highD1 <- config[D2condition,] %>% filter(abs(D1 - refD1[1]) < 2) %>% 
+        slice(1)
       ids <- c(lowD1$id,zeroD1$id,highD1$id)
       pts <- append(pts,ids)
     } else {
@@ -95,12 +98,15 @@ ReprPoints <- function(config,refD2,refD1=NULL,setD1=F) {
 PlotWithRepr <- function(config,pts,main="Configuration",xlab="D1",ylab="D2") {
   plot(config, as=1,
      main=main,
-     xlab = xlab, ylab = ylab, col= ifelse(rownames(config) %in% pts,"magenta","black"),
-     pch= ifelse(rownames(config) %in% pts,19,1), cex= ifelse(rownames(config) %in% pts,2,1))
+     xlab = xlab, ylab = ylab, 
+     col= ifelse(rownames(config) %in% pts,"magenta","black"),
+     pch= ifelse(rownames(config) %in% pts,19,1), 
+     cex= ifelse(rownames(config) %in% pts,2,1))
 }
 
 pts <- ReprPoints(conf.lmds.zeros.res,c(15,15),c(15,15),setD1 = T)
-PlotWithRepr(conf.lmds.zeros.res, pts, main = paste0("Local MDS, k=",k,", tau=",tau))
+PlotWithRepr(conf.lmds.zeros.res, pts, 
+             main = paste0("Local MDS, k=",k,", tau=",tau))
 
 ```
 
@@ -157,7 +163,7 @@ PlotWithRepr(cbind(pc3, pc1),pts31,main="PCA configuration, D3 and D1",xlab="D3"
 
 ### Representative digits
 
-Again, the first dimension is related to the flatness of the zero, but the difference across the range of $PC1$ values  is less evident with respect to LMDS. Moreover, the direction of the effect is the opposite compared to LMDS: higher $PC1$ values imply a thinner digit. The second principal component is again an indicator of the stroke width, and it moves in the same direction as in LMDS. In both cases, a low value of $PC3$ seems to reduce the influence of $PC1$ and $PC2$ and make for "more equal" zeros, as if $PC3$ encoded a notion of "variability" of the points.
+Again, the first dimension is related to the flatness of the zero, but the difference across the range of $PC1$ values  is less evident with respect to LMDS. Moreover, the direction of the effect is the opposite compared to LMDS: higher $PC1$ values imply a thinner digit. The second principal component is again an indicator of the stroke width, and it moves in the same direction as in LMDS. In both cases, a low value of $PC3$ seems to reduce the influence of $PC1$ and $PC2$ and make for "more equal" zeros, as if $PC3$ encoded a notion of "variance" of the points.
 
 ```{r}
 PlotReprZeros(pts12, "PC1", "PC2")
@@ -212,12 +218,15 @@ par(mfrow=c(1,2))
 plot(conf.lmds.zeros.res)
 plot(pc1, pc2)
 ```
-Finally, since low values of PC3 coincide with low variability, we choose to perform a dimensionality expansion on the LMDS results and add a third dimension $z = D_1^2 + D_2^2$.
-We choose this function since it will be low for data points that lie very close to the center, and thus have lower variability.
-The resulting plot is similar to what we observe with PCA, as we can see from the following 3D scatterplot.
+
+Since low values of PC3 coincide with low variance, we choose to perform a dimensionality expansion on the LMDS results and add a third dimension $z = D_1^2 + D_2^2$.
+We choose this function since it will be low for data points that lie very close to the center, and thus have lower variance in radius and stroke width.
+The resulting plot is similar to what we observe with PCA, as we can see from the following 3D scatterplot. Both plots have higher density in the lower region and expand on their upper part.
 
 ```{r}
-points3D(lmds1, lmds2, lmds1^2 + lmds2^2, colvar=NULL, phi = 20, theta = 60, r =sqrt(3), d =3, scale=T, col=4, xlim = range(lmds1), ylim = range(lmds2))
+points3D(lmds1, lmds2, lmds1^2 + lmds2^2, colvar=NULL, phi = 20, theta = 60, 
+         r =sqrt(3), d =3, scale=T, col=4, 
+         xlim = range(lmds1), ylim = range(lmds2))
 ```
 
 # ISOMAP for ZERO digits
@@ -239,7 +248,8 @@ rownames(conf.ismp.zeros.res) <- seq(1,nrow(conf.ismp.zeros.res))
 
 ```{r}
 pts <- ReprPoints(conf.ismp.zeros.res,c(15,18),c(25,23),setD1 = T)
-PlotWithRepr(conf.ismp.zeros.res,pts,main=paste0("ISOMAP MDS, k = ",k),"Dim 1","Dim 2")
+PlotWithRepr(conf.ismp.zeros.res,pts,main=paste0("ISOMAP, k = ",k),
+             "Dim 1","Dim 2")
 ```
 
 ### Representative Digits
@@ -260,9 +270,10 @@ pl1 <- df %>% ggplot(aes(pc1,iso1)) + geom_point()
 pl2 <- df %>% ggplot(aes(pc2,iso2)) + geom_point()
 pl3 <- df %>% cor() %>% round(2) %>% melt() %>%
 ggplot(aes(x=Var1, y=Var2, fill=value, label = value)) + 
-  geom_tile() + geom_text() + scale_fill_gradient2(low = "blue", high = "red", mid = "white", 
-   midpoint = 0, limit = c(-1,1), space = "Lab", 
-   name="Corr")
+  geom_tile() + geom_text() + scale_fill_gradient2(low = "blue", 
+  high = "red", mid = "white", 
+  midpoint = 0, limit = c(-1,1), space = "Lab", 
+  name="Corr")
 
 ggarrange(pl3,ggarrange(pl1,pl2,nrow=2))
 ```
@@ -273,10 +284,13 @@ par(mfrow=c(1,2))
 plot(iso1, iso2)
 plot(pc1, pc2)
 ```
+
 Finally, we perform dimensionality expansion as before.
 
 ```{r}
-points3D(iso1, iso2, iso1^2 + iso2^2, colvar=NULL, phi = 20, theta = 60, r =sqrt(3), d =3, scale=T, col=4, xlim = range(lmds1), ylim = range(lmds2))
+points3D(iso1, iso2, iso1^2 + iso2^2, colvar=NULL, phi = 20, theta = 60, 
+         r =sqrt(3), d =3, scale=T, col=4, 
+         xlim = range(lmds1), ylim = range(lmds2))
 ```
 
 
@@ -348,8 +362,10 @@ We now plot the resulting Tuned ISOMAP.
 
 ```{r}
 par(mfrow=c(1,2))
-plot(ISOMAP.max, main=paste("Tuned ISOMAP MDS, k =",k.max),col="#cc3366",xlim=c(-65,65))
-plot(conf.ismp.zeros.res, as=1, main=paste0("ISOMAP MDS, k = ",k), col="darkgreen", xlab = "Dim1", ylab = "Dim2",xlim=c(-65,65))
+plot(ISOMAP.max, main=paste("Tuned ISOMAP, k =",k.max),col="#cc3366",
+     xlim=c(-65,65))
+plot(conf.ismp.zeros.res, as=1, main=paste0("ISOMAP, k = ",k), 
+     col="darkgreen", xlab = "Dim1", ylab = "Dim2",xlim=c(-65,65))
 ```
 
  By tuning the parameter $k$ through the local continuity meta criteria, we identify 3 as the optimal number of neighbors to consider. We plot the resulting configuration, together with the initial one, obtained with $k$ = 5. As we can see, with the tuned parameter both dimensions allow one to explain a greater portion of the data variability, compared to the first estimated configuration with an arbitrary $k$: in fact, the observations now spread wider both on the x and the y axis. However, the overall shape of the data remains the same.
@@ -365,9 +381,11 @@ iso.dist.k3 <- sort(dist(conf.ismp.zeros.res))
 real.dist <- sort(distXY)
 sample <- sample(length(real.dist),10000)
 
-plot(iso.dist.best[sample],real.dist[sample],main="ISOMAP: real vs estimated distances with  k = 5",xlab="ISOMAP distance",
+plot(iso.dist.best[sample],real.dist[sample],
+     main="ISOMAP: real vs estimated distances with  k = 5",xlab="ISOMAP distance",
      ylab="real distance")
-plot(iso.dist.k3[sample],real.dist[sample],main="ISOMAP: real vs estimated distances with best k=3",xlab="ISOMAP distance",
+plot(iso.dist.k3[sample],real.dist[sample],
+     main="ISOMAP: real vs estimated distances with best k=3",xlab="ISOMAP distance",
      ylab="real distance")
 
 ```
@@ -391,7 +409,8 @@ lmds.k.tau <- array(vector("list",1),dim=dim(LC))
 
 for (i in 1:length(K)){
   for (j in 1:length(tau)){
-    lmds.k.tau[[i,j]] <- lmds(as.matrix(distXY), k=K[i], ndim=q, tau=tau[j], itmax=20)
+    lmds.k.tau[[i,j]] <- lmds(as.matrix(distXY), k=K[i], 
+                              ndim=q, tau=tau[j], itmax=20)
     D2.k.tau <- dist(lmds.k.tau[[i,j]]$conf)
     LC[i,j] <- LCMC(distXY,D2.k.tau,Kp)$M.Kp.adj
     #print(c(i,j,LC[i,j]))
@@ -415,7 +434,8 @@ lmds.best.tau <- lmds(as.matrix(distXY), k=5, ndim=q, tau=tau.max, itmax=20)
 lmds.best.k   <- lmds(as.matrix(distXY), k=k.max, ndim=q, tau=0.05, itmax=20)
 
 par(mfrow=c(2,2))
-plot(LocalMDS.max$conf,main=paste("Tuned LMDS, best k = ",k.max,", best tau = ",tau.max,sep=""),
+plot(LocalMDS.max$conf,
+     main=paste("Tuned LMDS, best k = ",k.max,", best tau = ",tau.max,sep=""),
      xlab="Dim 1", ylab="Dim 2",col="#cc3366",xlim=c(-150,230),ylim=c(-570,200))
 plot(lmds.best.tau$conf,main=paste("LMDS, k = ",5,", best tau = ",tau.max,sep=""),
      xlab="Dim 1", ylab="Dim 2",col="darkgreen",xlim=c(-150,230),ylim=c(-570,200))
