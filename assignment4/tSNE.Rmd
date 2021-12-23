@@ -1,0 +1,313 @@
+---
+title: 'Assignment: t-SNE'
+author: "Kevin Michael Frick, Sonia Petrini, Patrick Lutz"
+output: pdf_document
+---
+
+# t-SNE for ZERO digits
+
+```{r setup, include=FALSE}
+library(Rtsne)
+library(dplyr)
+library(ggplot2)
+library(reshape2)
+library(ggpubr)
+set.seed(50321)
+zip.train <- read.table("zip.train")
+zeros <- filter(zip.train, V1==0)
+zeros <- as.matrix(zeros[,-1])
+
+# plotting 1 digit
+plot.zip <- function(x,use.first=FALSE,...){ x<-as.numeric(x)
+if (use.first){
+x.mat <- matrix(x,16,16) }else{
+x.mat <- matrix(x[-1],16,16) }
+image(1:16,1:16,x.mat[,16:1], col=gray(seq(1,0,l=12)),...)
+invisible(
+if (!use.first){
+title(x[1]) }else{
+} )
+  #col=gray(seq(1,0,l=2)))
+}
+
+```
+
+## a
+
+Look for a 2-dimensional ($q = 2$) configuration of the data using parameters perplexity = 40 and theta = 0 in Rtsne function. Do the scatterplot of the obtained 2-dimensional configuration.
+
+```{r}
+n <- dim(zeros)[1]
+
+q<-2 # 2-dim config
+
+
+Rtsne.zeros.res <- Rtsne(zeros, perplexity=40, theta=0)
+conf.Rtsne.zeros.res <- Rtsne.zeros.res$Y
+rownames(conf.Rtsne.zeros.res) <- seq(1,nrow(conf.Rtsne.zeros.res))
+rownames(zeros) <- seq(1,nrow(zeros))
+
+plot(conf.Rtsne.zeros.res, as=1,
+   main="t-SNE, perplexity = 40, theta = 0",
+   xlab = "Dim 1", ylab = "Dim 2")
+```
+
+
+
+## b
+
+In the previous scatterplot, select a few points (9 points, for instance) located in such a way that they cover the variability of all the points in the scatterplot. Then use the function plot.zip to plot the ZERO digits corresponding to the selected points. The images you are plotting should allows you to give an interpretation of the 2 coordinates obtained by Local MDS (observe how the shape of ZEROs changes when moving along each directions of the scatterplot).
+
+### Representative digits
+
+In order to understand the meaning of the two retained dimensions, we select 9 representative examples by considering all 9 combinations of low, around 0, and high values of $x_1$ and $x_2$.
+To do so, we select arrays containing the points that lie closest to the axes and then select those that lie at the extremes of these arrays. We do the same with the points which lie near the lines $x_1 = x_2$ and $x_1 = -x_2$. We plot the selected points in purple over the previous scatter plot.
+
+```{r}
+ReprPoints <- function(config,refD2,refD1=NULL,setD1=F) {
+  config <- data.frame(config) %>% mutate(id = seq(1:nrow(config)))
+  colnames(config) <- c("D1","D2","id")
+  reflinesD2 <- c("high.D2","null.D2","low.D2")
+  pts <- c()
+  for (line in reflinesD2) {
+    D2condition <- switch(line, "high.D2" = (abs(config$D2 - refD2[1]) < 2),
+                                "null.D2" = (abs(config$D2 + 0) < 1),
+                                "low.D2"  = (abs(config$D2 + refD2[2]) < 2))
+    if (setD1==T) {
+      lowD1  <- config[D2condition,] %>% filter(abs(D1 + refD1[2]) < 2) %>% 
+        slice(1)
+      zeroD1 <- config[D2condition,] %>% filter(abs(D1 + 0) < 1) %>% slice(1)
+      highD1 <- config[D2condition,] %>% filter(abs(D1 - refD1[1]) < 2) %>% 
+        slice(1)
+      ids <- c(lowD1$id,zeroD1$id,highD1$id)
+      pts <- append(pts,ids)
+    } else {
+      res <- config[D2condition,]
+      res <- res %>% arrange(D1) %>% slice(c(1,round(nrow(res)/2),nrow(res)))
+      pts <- append(pts,res$id)
+    }
+  }
+  pts
+}
+
+PlotWithRepr <- function(config,pts,main="Configuration",xlab="D1",ylab="D2") {
+  plot(config, as=1,
+     main=main,
+     xlab = xlab, ylab = ylab, 
+     col= ifelse(rownames(config) %in% pts,"magenta","black"),
+     pch= ifelse(rownames(config) %in% pts,19,1), 
+     cex= ifelse(rownames(config) %in% pts,2,1))
+}
+
+pts <- ReprPoints(conf.Rtsne.zeros.res,c(21, 20))
+PlotWithRepr(conf.Rtsne.zeros.res, pts, 
+             main = "t-SNE, perplexity = 40, theta = 0")
+
+```
+
+
+```{r}
+PlotReprZeros <- function(pts, x1 = "x1", x2 = "x2"){
+  mains <- c(paste("High ",x2, ", Low ",x1, sep=""),
+             paste("High ",x2, ", Around zero ", x1, sep=""),
+             paste("High ",x2, ", High ", x1, sep=""),
+             paste("Around zero ",x2, ", Low ", x1, sep=""),
+             paste("Around zero ",x2, ", Around zero ", x1, sep=""),
+             paste("Around zero ",x2, ", High ", x1, sep=""),
+             paste("Low ",x2, ", Low ", x1, sep=""),
+             paste("Low ",x2, ", Around zero ", x1, sep=""),
+             paste("Low ",x2, ", High" , x1, sep=""))
+
+  p <- par(mfrow=c(3,3))
+  for (i in 1:length(pts)) {
+    point <- pts[i]
+    plot.zip(zeros[point,],TRUE,main=mains[i])
+  }
+  par(p)
+}
+
+PlotReprZeros(pts)
+```
+
+
+By plotting the representative datapoints, we can get an idea of the meaning of the two dimensions $x_1$ and $x_2$.
+The first dimension seems to account for ...
+
+
+
+## c (OPTIONAL) 
+
+Relate the results from t-SNE with those obtained by the first 3 principal components. In particular, could you represent in any way the results obtained by t-SNE in the 3-dimensional scatter plot of (PC1,PC2,PC3)?
+
+We perform PCA on our dataset and plot the configuration obtained with the first two dimensions. Again, we pick some representative points to understand the underlying concepts.
+
+```{r}
+zeros.pca <- princomp(as.matrix(zeros))
+pc1 <- zeros.pca$scores[,1]
+pc2 <- zeros.pca$scores[,2]
+pc3 <- zeros.pca$scores[,3]
+
+pts12 <- ReprPoints(cbind(pc1, pc2),c(7,7))
+pts23 <- ReprPoints(cbind(pc2, pc3),c(7,5),c(7,7),setD1 = T)
+pts31 <- ReprPoints(cbind(pc3, pc1),c(7,7),c(7,5),setD1 = T)
+par(mfrow=c(1,3))
+PlotWithRepr(cbind(pc1, pc2),pts12,main="PCA configuration, D1 and D2",xlab="D1",ylab="D2")
+PlotWithRepr(cbind(pc2, pc3),pts23,main="PCA configuration, D2 and D3",xlab="D2",ylab="D3")
+PlotWithRepr(cbind(pc3, pc1),pts31,main="PCA configuration, D3 and D1",xlab="D3",ylab="D1")
+```
+
+### Representative digits
+
+Again, the first dimension is related to ...
+
+In both cases, a low value of $PC3$ seems to reduce the influence of $PC1$ and $PC2$ and make for "more equal" zeros, as if $PC3$ encoded a notion of "variance" of the points.
+
+```{r}
+PlotReprZeros(pts12, "PC1", "PC2")
+PlotReprZeros(pts23, "PC2", "PC3")
+PlotReprZeros(pts31, "PC3", "PC1")
+```
+
+
+### 2-D configuration comparison
+
+We plot the configurations obtained with PCA (first two components) and with Local MDS. As expected, t-SNE in this case does a better job at recovering a good 2-dimensional representation of the data. The first t-SNE coordinate clearly explains more variability than the first principal component. This is consistent with what we observed above by visualizing some representative digits: the differences within Rtsne embedded digits across the first dimension where much more evident than those in the PCA ones.
+
+```{r}
+tSNE1 <- conf.Rtsne.zeros.res[,1]
+tSNE2 <- conf.Rtsne.zeros.res[,2]
+df <- data.frame(pc1,pc2,pc3,tSNE1,tSNE2)
+pl_pc <- ggplot(df, aes(pc1,pc2)) + geom_point() + xlim(c(-30,30)) + labs(title="PCA configuration")
+pl_Rtsne <- ggplot(df, aes(tSNE1,tSNE2)) + geom_point() + xlim(c(-30,30)) + labs(title="t-SNE configuration")
+ggarrange(pl_pc,pl_Rtsne,nrow=2)
+```
+
+### Dimensions Correlation
+
+To confirm our impressions on the relations between the first and the second dimensions retained by PCA and t-SNE, we compute the correlations between them, and display their scatter plots. As expected from visualizing the representative digits, while the two first components $pc_1$ and $tSNE_1$ are strongly negatively related ...
+
+```{r}
+
+pl1 <- df %>% ggplot(aes(pc1,tSNE1)) + geom_point()
+pl2 <- df %>% ggplot(aes(pc2,tSNE2)) + geom_point()
+pl3 <- df %>% cor() %>% round(2) %>% melt() %>%
+ggplot(aes(x=Var1, y=Var2, fill=value, label = value)) + 
+  geom_tile() + geom_text() + scale_fill_gradient2(low = "blue", high = "red", mid = "white", 
+   midpoint = 0, limit = c(-1,1), space = "Lab", 
+   name="Corr")
+
+ggarrange(pl3,ggarrange(pl1,pl2,nrow=2))
+```
+
+### 2D and 3D configurations
+
+We plot the 3D configuration obtained by PCA. 
+
+```{r}
+library(scatterplot3d)
+scatterplot3d(x = pc1, y = pc2, z = pc3)
+```
+
+The projection of the previous plot on the (PC2, PC3) plane is very similar to the results of t-SNE, as shown by the following plot.
+```{r}
+par(mfrow=c(1,2))
+plot(conf.Rtsne.zeros.res)
+plot(pc2, pc3)
+```
+
+We choose to perform a dimensionality expansion on the Rtsne results and add a third dimension $z = \sqrt{D_1^2 + D_2^2}$.
+We choose this function since it will be low for data points that lie very close to the center, and thus have lower variance in radius and stroke width. We use a square root because we notice that the PCA plot is quite "flat", and not heavily curved like a paraboloid.
+The resulting plot is similar to what we observe with PCA, as we can see from the following 3D scatterplot. Both plots have higher density in the lower region and expand on their upper part.
+
+```{r}
+z = sqrt(tSNE1^2 + tSNE2^2)
+scatterplot3d(x = tSNE2, y = tSNE1, z = z)
+
+```
+# Selecting the tuning parameters for ZERO digits
+
+## a
+
+Use the local continuity meta criteria to select the tuning parameter `perplexity` in t-SNE (use `theta = 0`) for ZERO digits. Then describe graphically the low dimensional configuration corresponding to the optimal parameter.
+
+
+```{r}
+LCMC <- function(D1,D2,Kp){
+  D1 <- as.matrix(D1)
+  D2 <- as.matrix(D2)
+  n <- dim(D1)[1]
+  N.Kp.i <- numeric(n)
+  for (i in 1:n){
+    N1.i <- sort.int(D1[i,],index.return = TRUE)$ix[1:Kp]
+    N2.i <- sort.int(D2[i,],index.return = TRUE)$ix[1:Kp]
+    N.Kp.i[i] <- length(intersect(N1.i, N2.i))
+  }
+  N.Kp<-mean(N.Kp.i)
+  M.Kp.adj <- N.Kp/Kp - Kp/(n-1)
+
+  return(list(N.Kp.i=N.Kp.i, M.Kp.adj=M.Kp.adj))
+}
+
+q <- 2
+
+Kp <- 10
+
+v.perp <- c(10, 15, 20, 25, 40, 60)
+
+LC <- numeric(length(v.perp))
+Rtsne.perp <- vector("list",length(v.perp))
+D1 <- dist(zeros)
+for (i in 1:length(v.perp)){
+  print(v.perp[i])
+  Rtsne.perp[[i]] <- Rtsne(zeros, ndim=q,perplexity=v.perp[i], theta=0)
+
+  D2.perp <- dist(Rtsne.perp[[i]]$Y)
+  LC[i] <- LCMC(D1,D2.perp,Kp)$M.Kp.adj
+  #print(c(i,j,LC[i,j]))
+}
+
+
+i.max <- which.max(LC)
+perp.max <- v.perp[i.max]
+Rtsne.max <- Rtsne.perp[[i.max]]$Y
+
+plot(v.perp, LC, type="b", main=paste0("The perplexity maximizing the LCMC is ",perp.max))
+abline(v=perp.max,lty="dashed",col="red")
+
+```
+
+
+## Best configuration
+
+We now plot the resulting Tuned t-SNE.
+
+```{r}
+par(mfrow=c(1,2))
+plot(Rtsne.max, main=paste("Tuned t-SNE, perplexity =", perp.max),col="#cc3366", xlab = "Dim1", ylab = "Dim2")
+plot(conf.Rtsne.zeros.res, as=1, main="t-SNE, perplexity = 40", 
+     col="darkgreen", xlab = "Dim1", ylab = "Dim2")
+```
+
+ By tuning the parameter `perplexity` through the local continuity meta criteria, we identify 20 as the optimal number value. We plot the resulting configuration, together with the initial one, obtained with `perplexity` = 40 . As we can see, with the tuned parameter both dimensions allow one to explain a greater portion of the data variability, compared to the first estimated configuration with an arbitrary `perplexity`: in fact, the observations now spread wider both on the x and the y axis. However, the overall shape of the data remains the same.
+
+
+### Real vs Estimated distances
+
+Then, we display a scatter plot of the real distances against the best estimated ones.
+
+```{r}
+Rtsne.dist.best  <- sort(dist(Rtsne.max))
+Rtsne.dist.k3 <- sort(dist(conf.Rtsne.zeros.res))
+real.dist <- sort(dist(zeros))
+sample <- sample(length(real.dist),10000)
+
+plot(Rtsne.dist.best[sample],real.dist[sample],
+     main="t-SNE: real vs est. dist. with perplexity = 40",xlab="t-SNE distance",
+     ylab="real distance")
+plot(Rtsne.dist.k3[sample],real.dist[sample],
+     main=paste0("t-SNE: real vs est. dist. with best perplexity = ", perp.max),
+     xlab="t-SNE distance", ylab="real distance")
+
+```
+
+As we can see, Rtsne managed to fairly recover the original distances, retaining their natural increasing ordering. As a matter of fact, real distances show a higher increase with respect to the estimated ones, especially for low values. We see that there is not a significant difference in overall shape of the real vs estimated curve, using the optimal `perplexity` value, but we notice that the scale of the distances is slightly lower when using the optimal value.
