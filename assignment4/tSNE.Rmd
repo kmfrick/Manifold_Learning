@@ -56,7 +56,7 @@ plot(conf.Rtsne.zeros.res, as=1,
 
 ## b
 
-In the previous scatterplot, select a few points (9 points, for instance) located in such a way that they cover the variability of all the points in the scatterplot. Then use the function plot.zip to plot the ZERO digits corresponding to the selected points. The images you are plotting should allows you to give an interpretation of the 2 coordinates obtained by Local MDS (observe how the shape of ZEROs changes when moving along each directions of the scatterplot).
+In the previous scatterplot, select a few points (9 points, for instance) located in such a way that they cover the variability of all the points in the scatterplot. Then use the function plot.zip to plot the ZERO digits corresponding to the selected points. The images you are plotting should allows you to give an interpretation of the 2 coordinates obtained by t-SNE (observe how the shape of ZEROs changes when moving along each directions of the scatterplot).
 
 ### Representative digits
 
@@ -171,7 +171,7 @@ PlotReprZeros(pts31, "PC3", "PC1")
 
 ### 2-D configuration comparison
 
-We plot the configurations obtained with PCA (first two components) and with Local MDS. As expected, t-SNE in this case does a better job at recovering a good 2-dimensional representation of the data. The first t-SNE coordinate clearly explains more variability than the first principal component. This is consistent with what we observed above by visualizing some representative digits: the differences within Rtsne embedded digits across the first dimension where much more evident than those in the PCA ones.
+We plot the configurations obtained with PCA (first two components) and with t-SNE. As expected, t-SNE in this case does a better job at recovering a good 2-dimensional representation of the data. The first t-SNE coordinate clearly explains more variability than the first principal component. This is consistent with what we observed above by visualizing some representative digits: the differences within Rtsne embedded digits across the first dimension where much more evident than those in the PCA ones.
 
 ```{r}
 tSNE1 <- conf.Rtsne.zeros.res[,1]
