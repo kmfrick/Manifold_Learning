@@ -74,10 +74,10 @@ ReprPoints <- function(config,refD2,refD1=NULL,setD1=F) {
                                 "null.D2" = (abs(config$D2 + 0) < 1),
                                 "low.D2"  = (abs(config$D2 + refD2[2]) < 2))
     if (setD1==T) {
-      lowD1  <- config[D2condition,] %>% filter(abs(D1 + refD1[2]) < 2) %>% 
+      lowD1  <- config[D2condition,] %>% filter(abs(D1 + refD1[2]) < 2) %>%
         slice(1)
       zeroD1 <- config[D2condition,] %>% filter(abs(D1 + 0) < 1) %>% slice(1)
-      highD1 <- config[D2condition,] %>% filter(abs(D1 - refD1[1]) < 2) %>% 
+      highD1 <- config[D2condition,] %>% filter(abs(D1 - refD1[1]) < 2) %>%
         slice(1)
       ids <- c(lowD1$id,zeroD1$id,highD1$id)
       pts <- append(pts,ids)
@@ -93,14 +93,14 @@ ReprPoints <- function(config,refD2,refD1=NULL,setD1=F) {
 PlotWithRepr <- function(config,pts,main="Configuration",xlab="tSNE1",ylab="tSNE2") {
   plot(config, as=1,
      main=main,
-     xlab = xlab, ylab = ylab, 
+     xlab = xlab, ylab = ylab,
      col= ifelse(rownames(config) %in% pts,"magenta","black"),
-     pch= ifelse(rownames(config) %in% pts,19,1), 
+     pch= ifelse(rownames(config) %in% pts,19,1),
      cex= ifelse(rownames(config) %in% pts,2,1))
 }
 
 pts <- ReprPoints(conf.Rtsne.zeros.res,c(20, 20))
-PlotWithRepr(conf.Rtsne.zeros.res, pts, 
+PlotWithRepr(conf.Rtsne.zeros.res, pts,
              main = "t-SNE, perplexity = 40, theta = 0")
 
 ```
@@ -135,7 +135,7 @@ The dimension $tSNE_1$ seems to encode a notion of radius of the zero, with high
 
 
 
-## c (OPTIONAL) 
+## c (OPTIONAL)
 
 Relate the results from t-SNE with those obtained by the first 3 principal components. In particular, could you represent in any way the results obtained by t-SNE in the 3-dimensional scatter plot of (PC1,PC2,PC3)?
 
@@ -170,13 +170,16 @@ The first principal component seems to be related to the flatness of the zero, b
 The only immediately apparent relationship between t-SNE and PCA is the negative correlation between the first t-SNE component and $PC1$. Therefore, we compute the correlations between them, and display their scatter plots.
 
 ```{r}
+tSNE1 <- conf.Rtsne.zeros.res[,1]
+tSNE2 <- conf.Rtsne.zeros.res[,2]
+df <- data.frame(pc1,pc2,pc3,tSNE1,tSNE2)
 
 pl1 <- df %>% ggplot(aes(pc1,tSNE1)) + geom_point()
 pl2 <- df %>% ggplot(aes(pc3,tSNE2)) + geom_point()
 pl3 <- df %>% cor() %>% round(2) %>% melt() %>%
-ggplot(aes(x=Var1, y=Var2, fill=value, label = value)) + 
-  geom_tile() + geom_text() + scale_fill_gradient2(low = "blue", high = "red", mid = "white", 
-   midpoint = 0, limit = c(-1,1), space = "Lab", 
+ggplot(aes(x=Var1, y=Var2, fill=value, label = value)) +
+  geom_tile() + geom_text() + scale_fill_gradient2(low = "blue", high = "red", mid = "white",
+   midpoint = 0, limit = c(-1,1), space = "Lab",
    name="Corr")
 
 ggarrange(pl3,ggarrange(pl1,pl2,nrow=2))
@@ -189,9 +192,7 @@ As expected from visualizing the representative digits, the two first components
 We plot the configurations obtained with PCA ($PC_1$ and $PC_3$, which display the strongest correlation, respectively with $tSNE_1$ and $t_SNE_2$) and with t-SNE. t-SNE in this case does a better job at recovering a 2-dimensional representation of the data that explains more variability, albeit the second dimension is harder to interpret compared to PCA. The first t-SNE coordinate clearly explains more variability than the first principal component. This is consistent with what we observed above by visualizing some representative digits: the differences within t-SNE embedded digits across the first dimension where much more evident than those in the PCA ones.
 
 ```{r}
-tSNE1 <- conf.Rtsne.zeros.res[,1]
-tSNE2 <- conf.Rtsne.zeros.res[,2]
-df <- data.frame(pc1,pc2,pc3,tSNE1,tSNE2)
+
 pl_pc <- ggplot(df, aes(pc1,pc3)) + geom_point() + xlim(c(-30,30)) + labs(title="PCA configuration")
 pl_Rtsne <- ggplot(df, aes(tSNE1,tSNE2)) + geom_point() + xlim(c(-30,30)) + labs(title="t-SNE configuration")
 ggarrange(pl_pc,pl_Rtsne,nrow=2)
@@ -200,27 +201,24 @@ ggarrange(pl_pc,pl_Rtsne,nrow=2)
 
 ### 2D and 3D configurations
 
-We plot the 3D configuration obtained by PCA. 
+We plot the 3D configuration obtained by PCA.
 
 ```{r}
 library(scatterplot3d)
 scatterplot3d(x = pc1, y = pc2, z = pc3)
 ```
 
-The projection of the previous plot on the ($PC_2, PC_3$) plane is similar to the results of t-SNE, as shown by the following plot.
-```{r}
-par(mfrow=c(1,2))
-plot(conf.Rtsne.zeros.res, xlab = "tSNE1", ylab = "tSNE2")
-plot(pc2, pc3)
-```
-
-We choose to perform a dimensionality expansion on the t-SNE results and add a third dimension $z = tSNE_1^2 + tSNE_2^2$.
-We choose this function since it will be low for data points that lie very close to the center, and thus have lower variance in radius and stroke width. 
-The resulting plot is similar to what we observe with PCA, as we can see from the following 3D scatterplot. Both plots have higher density in the lower region and expand on their upper part, and display a slightly curved shape.
+We choose to fit three linear models that regress each first three principal components on a spline that fits the two components obtained with t-SNE as its covariates. This results into the following expression for each component: $\hat{pc_j} = b_0 + b_1 S(tSNE_1, tSNE_2), \;j \in \{1, 2, 3\}$.
+We plot the scatterplot of these linear models over that of the three principal components.
 
 ```{r}
-z = tSNE1^2 + tSNE2^2
-scatterplot3d(x = tSNE2, y = tSNE1, z = z)
+library(mgcv)
+df.PCA.tSNE <- as.data.frame(cbind(pc1, pc2, pc3, tSNE1, tSNE2))
+smooth.PC1 <- gam(pc1~s(tSNE1,tSNE2), data=df.PCA.tSNE)$fitted.values
+smooth.PC2 <- gam(pc2~s(tSNE1,tSNE2), data=df.PCA.tSNE)$fitted.values
+smooth.PC3 <- gam(pc3~s(tSNE1,tSNE2), data=df.PCA.tSNE)$fitted.values
+points1 <- scatterplot3d(pc1, pc2, pc3)
+points1$points3d(smooth.PC1,smooth.PC2,smooth.PC3,col=6)
 ```
 # Selecting the tuning parameters for ZERO digits
 
@@ -282,7 +280,7 @@ We now plot the resulting Tuned t-SNE.
 ```{r}
 par(mfrow=c(1,2))
 plot(Rtsne.max, main=paste("Tuned t-SNE, perplexity =", perp.max),col="#cc3366", xlab = "tSNE1", ylab = "tSNE2")
-plot(conf.Rtsne.zeros.res, as=1, main="t-SNE, perplexity = 40", 
+plot(conf.Rtsne.zeros.res, as=1, main="t-SNE, perplexity = 40",
      col="darkgreen", xlab = "tSNE1", ylab = "tSNE2")
 ```
 
