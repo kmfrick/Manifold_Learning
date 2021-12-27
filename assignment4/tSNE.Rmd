@@ -12,7 +12,6 @@ library(dplyr)
 library(ggplot2)
 library(reshape2)
 library(ggpubr)
-set.seed(50321)
 zip.train <- read.table("zip.train")
 zeros <- filter(zip.train, V1==0)
 zeros <- as.matrix(zeros[,-1])
@@ -41,7 +40,7 @@ n <- dim(zeros)[1]
 
 q<-2 # 2-dim config
 
-
+set.seed(50321)
 Rtsne.zeros.res <- Rtsne(zeros, perplexity=40, theta=0)
 conf.Rtsne.zeros.res <- Rtsne.zeros.res$Y
 rownames(conf.Rtsne.zeros.res) <- seq(1,nrow(conf.Rtsne.zeros.res))
@@ -71,7 +70,7 @@ ReprPoints <- function(config,refD2,refD1=NULL,setD1=F) {
   pts <- c()
   for (line in reflinesD2) {
     D2condition <- switch(line, "high.D2" = (abs(config$D2 - refD2[1]) < 2),
-                                "null.D2" = (abs(config$D2 + 0) < 1),
+                                "null.D2" = (abs(config$D2 + 0) < 2),
                                 "low.D2"  = (abs(config$D2 + refD2[2]) < 2))
     if (setD1==T) {
       lowD1  <- config[D2condition,] %>% filter(abs(D1 + refD1[2]) < 2) %>%
@@ -99,7 +98,7 @@ PlotWithRepr <- function(config,pts,main="Configuration",xlab="tSNE1",ylab="tSNE
      cex= ifelse(rownames(config) %in% pts,2,1))
 }
 
-pts <- ReprPoints(conf.Rtsne.zeros.res,c(20, 20))
+pts <- ReprPoints(conf.Rtsne.zeros.res,c(20, 20), c(30, 30), T)
 PlotWithRepr(conf.Rtsne.zeros.res, pts,
              main = "t-SNE, perplexity = 40, theta = 0")
 
@@ -131,8 +130,7 @@ PlotReprZeros(pts)
 
 
 By plotting the representative datapoints, we can get an idea of the meaning of the two dimensions $tSNE_1$ and $tSNE_2$.
-The dimension $tSNE_1$ seems to encode a notion of radius of the zero, with higher values corresponding to wider zeros. When $tSNE_1$ is around zero, $tSNE_2$ seems to be positively correlated with stroke width, but such a correlation seems to be in the opposite direction when $tSNE_1$ has very positive or negative values. In general, $tSNE_2$ seems to be related with an interplay of characteristics of the zeroes.
-
+The dimension $tSNE_1$ seems to encode a notion of radius of the zero, with higher values corresponding to wider zeros, and $tSNE_2$ seems to be positively correlated with stroke width.
 
 
 ## c (OPTIONAL)
@@ -185,11 +183,12 @@ ggplot(aes(x=Var1, y=Var2, fill=value, label = value)) +
 ggarrange(pl3,ggarrange(pl1,pl2,nrow=2))
 ```
 
-As expected from visualizing the representative digits, the two first components $PC_1$ and $tSNE_1$ are strongly negatively related. Moreover, there seems to be a positive correlation, albeit weaker, between $PC_3$ and $tSNE_2$, as well as between $PC_2$ and $tSNE_2$ and, to a much lower extent, between $tSNE_2$ and $PC_1$. This is consistent with the observation that $tSNE_2$ seems to be related to an interplay of characteristics.
+As expected from visualizing the representative digits, the two first components $PC_1$ and $tSNE_1$ are strongly negatively related. Moreover, there seems to be a positive correlation, albeit weaker, between $PC_3$ and $tSNE_2$, as well as between $PC_2$ and $tSNE_2$ and, to a much lower extent, between $tSNE_2$ and $PC_1$.
 
 ### 2-D configuration comparison
 
-We plot the configurations obtained with PCA ($PC_1$ and $PC_3$, which display the strongest correlation, respectively with $tSNE_1$ and $t_SNE_2$) and with t-SNE. t-SNE in this case does a better job at recovering a 2-dimensional representation of the data that explains more variability, albeit the second dimension is harder to interpret compared to PCA. The first t-SNE coordinate clearly explains more variability than the first principal component. This is consistent with what we observed above by visualizing some representative digits: the differences within t-SNE embedded digits across the first dimension where much more evident than those in the PCA ones.
+We plot the configurations obtained with PCA ($PC_1$ and $PC_3$, which display the strongest correlation, respectively with $tSNE_1$ and $t_SNE_2$) and with t-SNE. t-SNE in this case does a better job at recovering a 2-dimensional representation of the data that explains more variability.
+The first t-SNE coordinate clearly explains more variability than the first principal component. This is consistent with what we observed above by visualizing some representative digits: the differences within t-SNE embedded digits across the first dimension where much more evident than those in the PCA ones.
 
 ```{r}
 
@@ -208,18 +207,45 @@ library(scatterplot3d)
 scatterplot3d(x = pc1, y = pc2, z = pc3)
 ```
 
-We choose to fit three linear models that regress each first three principal components on a spline that fits the two components obtained with t-SNE as its covariates. This results into the following expression for each component: $\hat{pc_j} = b_0 + b_1 S(tSNE_1, tSNE_2), \;j \in \{1, 2, 3\}$.
-We plot the scatterplot of these linear models over that of the three principal components.
+Since we noticed a correlation between principal components and t-SNE components, we investigate further. We choose to fit three linear models that regress each of the first three principal components on the two t-SNE components. We then plot the residuals vs fitted values to gauge the accuracy of our models.
+
+```{r}
+df.PCA.tSNE <- as.data.frame(cbind(pc1, pc2, pc3, tSNE1, tSNE2))
+
+lm.PC1 <- lm(pc1 ~ (tSNE1 + tSNE2), data = df.PCA.tSNE)
+lm.PC2 <- lm(pc2 ~ (tSNE1 + tSNE2), data = df.PCA.tSNE)
+lm.PC3 <- lm(pc3 ~ (tSNE1 + tSNE2), data = df.PCA.tSNE)
+
+plot(lm.PC1, which = 1)
+plot(lm.PC2, which = 1)
+plot(lm.PC3, which = 1)
+```
+
+From these plots, it becomes apparent that a linear model is inadequate to fully explain the correlation.
+In fact, we still see a pattern in the residuals, which appear to follow a polynomial shape.
+To better fit this shape, we regress the three principal components on a spline that fits the two components obtained with t-SNE as its covariates.
 
 ```{r}
 library(mgcv)
-df.PCA.tSNE <- as.data.frame(cbind(pc1, pc2, pc3, tSNE1, tSNE2))
-smooth.PC1 <- gam(pc1~s(tSNE1,tSNE2), data=df.PCA.tSNE)$fitted.values
-smooth.PC2 <- gam(pc2~s(tSNE1,tSNE2), data=df.PCA.tSNE)$fitted.values
-smooth.PC3 <- gam(pc3~s(tSNE1,tSNE2), data=df.PCA.tSNE)$fitted.values
-points1 <- scatterplot3d(pc1, pc2, pc3)
-points1$points3d(smooth.PC1,smooth.PC2,smooth.PC3,col=6)
+smooth.PC1 <- gam(pc1~s(tSNE1,tSNE2), data=df.PCA.tSNE)
+smooth.PC2 <- gam(pc2~s(tSNE1,tSNE2), data=df.PCA.tSNE)
+smooth.PC3 <- gam(pc3~s(tSNE1,tSNE2), data=df.PCA.tSNE)
+plot(smooth.PC1$fitted.values, smooth.PC1$residuals)
+plot(smooth.PC2$fitted.values, smooth.PC2$residuals)
+plot(smooth.PC3$fitted.values, smooth.PC3$residuals)
+hist(smooth.PC3$residuals, breaks = 30)
 ```
+
+This time, we see a normal distribution in our residuals, which is confirmed by plotting a histogram and indicates a good fit for our model.
+
+Finally, we plot the fitted points in the same 3D scatterplot as the principal components.
+
+
+```{r}
+points1 <- scatterplot3d(pc1, pc2, pc3)
+points1$points3d(smooth.PC1$fitted.values,smooth.PC2$fitted.values,smooth.PC3$fitted.values,col=6)
+```
+
 # Selecting the tuning parameters for ZERO digits
 
 ## a
@@ -254,7 +280,7 @@ LC <- numeric(length(v.perp))
 Rtsne.perp <- vector("list",length(v.perp))
 D1 <- dist(zeros)
 for (i in 1:length(v.perp)){
-  print(v.perp[i])
+  set.seed(50321)
   Rtsne.perp[[i]] <- Rtsne(zeros, ndim=q,perplexity=v.perp[i], theta=0)
 
   D2.perp <- dist(Rtsne.perp[[i]]$Y)
@@ -279,13 +305,32 @@ We now plot the resulting Tuned t-SNE.
 
 ```{r}
 par(mfrow=c(1,2))
-plot(Rtsne.max, main=paste("Tuned t-SNE, perplexity =", perp.max),col="#cc3366", xlab = "tSNE1", ylab = "tSNE2")
-plot(conf.Rtsne.zeros.res, as=1, main="t-SNE, perplexity = 40",
-     col="darkgreen", xlab = "tSNE1", ylab = "tSNE2")
+plot(Rtsne.max, main=paste("Tuned t-SNE, perplexity =", perp.max),col="#cc3366",
+     xlab = "tSNE1", ylab = "tSNE2", xlim = c(-90, 90), ylim = c(-100, 100))
+plot(conf.Rtsne.zeros.res, as=1, main="t-SNE, perplexity = 40", col="darkgreen",
+     xlab = "tSNE1", ylab = "tSNE2", xlim = c(-90, 90), ylim = c(-100, 100))
 ```
 
- By tuning the parameter `perplexity` through the local continuity meta criteria, we identify 20 as the optimal number value. We plot the resulting configuration, together with the initial one, obtained with `perplexity = 40` . As we can see, with the tuned parameter both dimensions allow one to explain a greater portion of the data variability, compared to the first estimated configuration with an arbitrary `perplexity`: in fact, the observations now spread wider both on the x and the y axis. However, the overall shape of the data remains the same.
+ By tuning the parameter `perplexity` through the local continuity meta criteria, we identify the optimal value. We plot the resulting configuration, together with the initial one, obtained with `perplexity = 40` . As we can see, with the tuned parameter both dimensions allow one to explain a greater portion of the data variability, compared to the first estimated configuration with an arbitrary `perplexity`: in fact, the observations now spread wider both on the x and the y axis, but the overall shape remains the same. We investigate by drawing the correlation matrix between the t-SNE components as generated with optimal and arbitrary `perplexity`.
 
+```{r}
+tSNE1.max <- Rtsne.max[,1]
+tSNE2.max <- Rtsne.max[,2]
+tSNE1 <- conf.Rtsne.zeros.res[,1]
+tSNE2 <- conf.Rtsne.zeros.res[,2]
+df <- data.frame(tSNE1, tSNE2, tSNE1.max ,tSNE2.max)
+
+pl1 <- df %>% ggplot(aes(tSNE1.max,tSNE1)) + geom_point()
+pl2 <- df %>% ggplot(aes(tSNE2.max,tSNE2)) + geom_point()
+pl3 <- df %>% cor() %>% round(2) %>% melt() %>%
+ggplot(aes(x=Var1, y=Var2, fill=value, label = value)) +
+  geom_tile() + geom_text() + scale_fill_gradient2(low = "blue", high = "red", mid = "white",
+   midpoint = 0, limit = c(-1,1), space = "Lab",
+   name="Corr")
+
+ggarrange(pl3,ggarrange(pl1,pl2,nrow=2))
+```
+We see that the values for the  components fitted by the two models show an almost perfect correlation. Such an observation is consistent with theoretical expectations of t-SNE's low sensitivity to the `perplexity` parameter.
 
 ### Real vs Estimated distances
 
@@ -307,3 +352,4 @@ plot(Rtsne.dist.perp40[sample],real.dist[sample],
 ```
 
 As we can see, t-SNE managed to recover the original distances so as to retain their natural increasing order. As a matter of fact, real distances show a higher increase with respect to the estimated ones, especially for low values. We see that there is not a significant difference in overall shape of the real vs estimated curve, using the optimal `perplexity` value, but we notice that the scale of the distances is slightly lower when using the optimal value.
+Such an observation, again,  is consistent with theoretical expectations of t-SNE's low sensitivity to the `perplexity` parameter.
