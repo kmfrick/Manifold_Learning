@@ -4,7 +4,6 @@ author: "Kevin Frick, Patrick Lutz, and Sonia Petrini"
 date: "28 Nov 2021"
 output:
   pdf_document: default
-  html_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -18,12 +17,12 @@ knitr::opts_chunk$set(echo = TRUE)
 Reading the data:
 ```{r}
 library(dplyr)
-zip.train <- read.table("zip.train")
+zip.train <- read.table("../zip.train")
 zeros <- filter(zip.train, V1==0)
 zeros <- as.matrix(zeros[,-1])
 ```
 
-a. Do a hierarchical clustering of these data using the ward.D method, plot the resulting dendogram and cut it into k=4 clusters
+a. Do a hierarchical clustering of these data using the ward.D method, plot the resulting dendogram and cut it into $k = 4$ clusters
 ```{r}
 dendo <- hclust(dist(zeros), method="ward.D")
 plot(dendo)
